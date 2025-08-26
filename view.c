@@ -34,19 +34,3 @@ void draw(boardGameState* bgs){
     }
     return;
 }
-    
-/*
-int main(int argc, char* argv[]){
-    int width = atoi(argv[1]);
-    int height = atoi(argv[2]);
-    printf("%d", width);
-    printf("%d", height);
-    
-    for (int i = 0; i < width; i++){
-        for (int j = 0; j < height; j++){
-            printf("a");
-        }
-        printf("\n");
-    }      
-}
-    */
