@@ -1,16 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "include/shmConstants.h"
 
 typedef char bool;
 
-typedef struct {
-unsigned short boardWidth; // Ancho del tablero
-unsigned short boardHeight; // Alto del tablero
-unsigned int playerAmount; // Cantidad de jugadores
-//playerGameState players[9]; // Lista de jugadores
-bool isGameOver; // Indica si el juego se ha terminado
-int boardStart[]; // Puntero al comienzo del tablero. fila-0, fila-1, ..., fila-n-1
-} boardGameState;
 
 void draw(boardGameState* bgs);
 
