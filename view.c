@@ -9,6 +9,12 @@ void draw(boardGameState* bgs);
 
 //TODO: SHM OPEN Y UNLINK PERO... Y LOS FILE DESCRIPTORS?
 int main(int argc, char* argv[]){
+    if (argc != 3)
+        errExit("Argumentos incorrectos para view");
+
+    int width = atoi(argv[1]);
+    int height = atoi(argv[2]);
+
     int fd_bgs, fd_ss;
     boardGameState* shm_bgs;
     syncState * shm_ss;
@@ -48,6 +54,10 @@ int main(int argc, char* argv[]){
         if (sem_post(&shm_ss->B) == -1)
             errExit("sem_post B");
     }
+
+    //Habria que dibujar una game over screen:
+        system("clear");
+        draw(shm_bgs);
 
     //Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen
     if (sem_post(&shm_ss->B) == -1)

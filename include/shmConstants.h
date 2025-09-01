@@ -58,7 +58,7 @@ struct shmbuf {
     char   buf[BUF_SIZE];   /* Data being transferred */
 };
 
-#define HEIGHT 8
+#define HEIGHT 4
 #define TWO 2
 #define BOARD_GAME_STATE_SIZE sizeof(boardGameState) + sizeof(int) * (HEIGHT * HEIGHT)
 
