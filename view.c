@@ -31,16 +31,27 @@ int main(int argc, char* argv[]){
     if (shm_ss == MAP_FAILED)
         errExit("mmap syncState in view");
 
-    //Hay que esperar a que se pueda 
-    if (sem_wait(&shm_ss->A) == -1)
-        errExit("sem_wait A");
+    while (1){
+        //Hay que esperar a que se pueda 
+        if (sem_wait(&shm_ss->A) == -1)
+            errExit("sem_wait A");
 
-    //Efectivamente, se dibuja
-    draw(shm_bgs);
+        if (shm_bgs->isGameOver)
+            break;
 
-    //Se avisa al master que ya se dibujo
+        system("clear"); //Hay alguna mejor opcion? "cls"?
+
+        //Efectivamente, se dibuja
+        draw(shm_bgs);
+
+        //Se avisa al master que ya se dibujo
+        if (sem_post(&shm_ss->B) == -1)
+            errExit("sem_post B");
+    }
+
+    //Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen
     if (sem_post(&shm_ss->B) == -1)
-        errExit("sem_post B");
+        errExit("sem_post B final");
 
     munmap(shm_bgs, BOARD_GAME_STATE_SIZE);
     munmap(shm_ss, SYNC_STATE_SIZE);
