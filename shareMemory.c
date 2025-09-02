@@ -7,14 +7,7 @@
 #include <string.h>
 #include <time.h>
 #include "include/shmConstants.h"
-
-void initRandom() {
-    srand(time(NULL)); 
-}
-
-int getSquareValue() {
-    return (rand() % 9);
-}
+#include "include/utilities.h"
 
 //TO DO - CORREGIR LAS CONSTANTES DE BOARD GAME STATE
 boardGameState * createShmBoardGameState(){
@@ -107,31 +100,3 @@ void closeShmSyncState(syncState * shmp){
         errExit("Error unlinking shmSyncState");
     }
 }
-    
-    /* Initialize semaphores as process-shared, with value 0. */
-
-            //    if (sem_init(&shm_p->sem1, 1, 0) == -1)
-            //        errExit("sem_init-sem1");
-            //    if (sem_init(&shm_p->sem2, 1, 0) == -1)
-            //        errExit("sem_init-sem2");
-
-            //    /* Wait for 'sem1' to be posted by peer before touching
-            //       shared memory. */
-
-            //    if (sem_wait(&shmp->sem1) == -1)
-            //        errExit("sem_wait");
-
-          /* Convert data in shared memory into upper case. */
-
-            //    for (size_t j = 0; j < shmp->cnt; j++)
-            //        shmp->buf[j] = toupper((unsigned char) shmp->buf[j]);
-
-               /* Post 'sem2' to tell the peer that it can now
-                  access the modified data in shared memory. */
-
-            //    if (sem_post(&shmp->sem2) == -1)
-            //        errExit("sem_post");
-
-               /* Unlink the shared memory object. Even if the peer process
-                  is still using the object, this is okay. The object will
-                  be removed only after all open references are closed. */    

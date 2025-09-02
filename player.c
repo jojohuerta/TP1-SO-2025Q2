@@ -1,21 +1,13 @@
 #include <stdio.h>
 #include <time.h>
 #include "include/shmConstants.h"
+#include "include/utilities.h"
 #include <fcntl.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
-
-//Correr esto una sola vez
-void initRandom() {
-    srand(time(NULL)); 
-}
-
-unsigned char movAnalysis() {
-    return (unsigned char)(rand() % 8);
-}
 
 void loadPlayer1(boardGameState * shm_bgs){
     shm_bgs->players[0].isBlocked=0;
