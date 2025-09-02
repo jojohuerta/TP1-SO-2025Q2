@@ -10,6 +10,43 @@
 
 extern char **environ;
 
+void interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player) {
+    char msg[100];
+    switch (mov) {
+        case 0:
+            shm_bgs->players[player].y--;
+            break;
+        case 1:
+            shm_bgs->players[player].y--;
+            shm_bgs->players[player].x++;
+            break;
+        case 2:
+            shm_bgs->players[player].x++;
+            break;
+        case 3:
+            shm_bgs->players[player].x++;
+            shm_bgs->players[player].y++;
+            break;
+        case 4:
+            shm_bgs->players[player].y++;
+            break;
+        case 5:
+            shm_bgs->players[player].y++;
+            shm_bgs->players[player].x--;
+            break;
+        case 6:
+            shm_bgs->players[player].x--;
+            break;
+        case 7:
+            shm_bgs->players[player].y--;
+            shm_bgs->players[player].x--;
+            break;
+        default:
+            snprintf(msg, sizeof(msg), "Movimiento no valido. Se leyo: %d", mov);
+            errExit(msg);
+    }
+}
+
 int main(int argc, char *argv[]){
     boardGameState * shm_bgs;
     syncState * shm_ss;
@@ -45,29 +82,81 @@ int main(int argc, char *argv[]){
             errExit("execve view");
     }
     
-    //INICIALIZACION DE UN PROCESO PLAYER
+    //INICIALIZACION DE UN PROCESO PLAYER Y CREACION DEL PIPE
+    //Pipe anonimo
+    int pipefd[2]; //[0] es lectura y [1] es escritura
     int playerStatus;
+
+    if (pipe(pipefd) == -1)
+        errExit("pipe player");
+
+    //Creacion del proceso
     pid_t playerPid = fork();
     if (playerPid == -1)
-        errExit("fork view");
+        errExit("fork player");
 
     char * playerPath = "./player"; 
     char * playerArgs[] = {"./player", heightStr, widthStr, NULL};
 
-    if(playerPid == 0){   //Si el PID = 0 es el hijo
+    if(playerPid == 0){     //Si el PID = 0 es el hijo
+        
+        //Cerrado del extremo de lectura del pipe
+        close(pipefd[0]); 
+        
+        //Cerrado del stdout?
+        close(1);  
+
+        //Duplicado del file descriptor al mas chico, o sea, 1 (STDOUT)
+        //Ahora el extremo del pipe es el STDOUT
+        if(dup(pipefd[1]) == -1)
+            errExit("dup player");
+
+
+        //Cerrado del FD del pipe original ya que nos vamos a quedar con STDOUT
+        close(pipefd[1]);
+
+        //Ejecucion del jugador
         if(execve(playerPath, playerArgs, environ) == -1)
             errExit("execve player");
-    }
 
-    for (int i = 0; i < 10; i++){
-        //PRIMERO DIBUJARMOS
+    } else {                //El padre
+
+        //se cierra el extremo de escritura
+        close(pipefd[1]);
+
+    }
+    
+    int playerReadFd = pipefd[0];
+    
+    for (int i = 0; i < 5; i++){
+
+        //NOS ENCARGAMOS DE LOS PLAYERS
+
+        //Recepcion de movimiento por pipes
+        unsigned char mov;
+        read(playerReadFd, &mov, 1);
+
+        if (sem_wait(&shm_ss->mutex) == -1)
+                errExit("sem_wait mutex");
+        if (sem_wait(&shm_ss->writer) == -1)
+            errExit("sem_wait writer");
+        if (sem_post(&shm_ss->writer) == -1)
+            errExit("sem_post writer");
+        
+        //TODO: EJECUTAR MOVIMIENTOS
+            //TODO: Validar que sea valido. Por ahora vamos a asumir que si lo es.
+            //Aca se ejecuta pero asumiendo que todo sale bien
+        interpretMovement(mov, shm_bgs, 0);
+        shm_bgs->boardStart[shm_bgs->players[0].x + shm_bgs->players[0].y * shm_bgs->boardHeight]=1;
+
+        if (sem_post(&shm_ss->mutex) == -1)
+            errExit("sem_post mutex");
+
+        //DIBUJARMOS
         
         //Se avisa a la vista que puede imprimir
         if (sem_post(&shm_ss->A) == -1)
             errExit("sem_post A");
-
-        //TO-DO: REMOVER ESTO QUE ES PARA TESTEO
-        printf("%d\n", i);
 
         //Esperamos a la vista a que termine de imprimr
         if (sem_wait(&shm_ss->B) == -1)
@@ -76,17 +165,6 @@ int main(int argc, char *argv[]){
         //TO-DO: IMPLEMENTAR EL TIME-OUT PARA LA IMPRESION POR PARAMETRO.
         sleep(1);
 
-        //DESPUES DIBUJAMOS
-        //TO-DO: RECIBIR MOVIMIENTO POR PIPES
-        if (sem_wait(&shm_ss->mutex) == -1)
-                errExit("sem_wait mutex");
-        if (sem_wait(&shm_ss->writer) == -1)
-            errExit("sem_wait writer");
-        if (sem_post(&shm_ss->writer) == -1)
-            errExit("sem_post writer");
-        //TODO: EJECUTAR MOVIMIENTOS
-        if (sem_post(&shm_ss->mutex) == -1)
-            errExit("sem_post mutex");
     }
 
     shm_bgs->isGameOver = 1;
@@ -105,6 +183,8 @@ int main(int argc, char *argv[]){
 
     closeShmBoardGameState(shm_bgs);
     closeShmSyncState(shm_ss);
-
+    
+    close(pipefd[0]);
+    
     exit(EXIT_SUCCESS);
 }

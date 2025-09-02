@@ -5,13 +5,23 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <string.h>
+#include <time.h>
 #include "include/shmConstants.h"
+
+void initRandom() {
+    srand(time(NULL)); 
+}
+
+int getSquareValue() {
+    return (rand() % 9);
+}
 
 //TO DO - CORREGIR LAS CONSTANTES DE BOARD GAME STATE
 boardGameState * createShmBoardGameState(){
     int fd;
     char * shmpath = GAME_STATE_PATH;
     boardGameState * shmp;
+    initRandom();
 
     //Creacion
     fd = shm_open(shmpath, O_CREAT | O_EXCL | O_RDWR, 0600);
@@ -36,7 +46,7 @@ boardGameState * createShmBoardGameState(){
     shmp->isGameOver = 0;
     memset(shmp->players, 0, sizeof(shmp->players));
     for (int i = 0; i < HEIGHT * HEIGHT; i++) {
-        shmp->boardStart[i] = 0;
+        shmp->boardStart[i] = 0; // shmp->boardStart[i] = getSquareValue();
     }
 
     return shmp;

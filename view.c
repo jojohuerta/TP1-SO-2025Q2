@@ -45,8 +45,8 @@ int main(int argc, char* argv[]){
         if (shm_bgs->isGameOver)
             break;
 
-        system("clear"); //Hay alguna mejor opcion? "cls"?
-
+        //system("clear"); //Hay alguna mejor opcion? "cls"?
+printf("X=%d, Y=%d\n", shm_bgs->players[0].x,shm_bgs->players[0].y );
         //Efectivamente, se dibuja
         draw(shm_bgs);
 
@@ -56,7 +56,7 @@ int main(int argc, char* argv[]){
     }
 
     //Habria que dibujar una game over screen:
-        system("clear");
+        //system("clear");
         draw(shm_bgs);
 
     //Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen
@@ -74,7 +74,7 @@ void draw(boardGameState* bgs){
     }
     for (int i = 0; i < bgs->boardWidth; i++){
         for (int j = 0; j < bgs->boardHeight; j++){
-            printf ("■");
+            printf ("%d", bgs->boardStart[(i * bgs->boardWidth) + j]);
         }
         printf("\n");
     }

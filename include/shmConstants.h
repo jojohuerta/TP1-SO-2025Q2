@@ -9,8 +9,10 @@
 #define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \
                         } while (0)
 
+#define HEIGHT 9
+
 #define GAME_STATE_PATH "/game_state"
-#define GAME_STATE_SIZE sizeof(boardGameState) + sizeof(playerState) * 9
+#define GAME_STATE_SIZE sizeof(boardGameState) + sizeof(int) * HEIGHT * HEIGHT
 
 #define SYNC_STATE_PATH "/game_sync"
 #define SYNC_STATE_SIZE sizeof(syncState)
@@ -58,7 +60,7 @@ struct shmbuf {
     char   buf[BUF_SIZE];   /* Data being transferred */
 };
 
-#define HEIGHT 4
+
 #define TWO 2
 #define BOARD_GAME_STATE_SIZE sizeof(boardGameState) + sizeof(int) * (HEIGHT * HEIGHT)
 
