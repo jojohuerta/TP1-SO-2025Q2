@@ -1,83 +1,147 @@
 #include <stdio.h>
 #include <time.h>
 #include "include/shmConstants.h"
+#include <fcntl.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
- #include <fcntl.h>
-           #include <stddef.h>
-           #include <stdlib.h>
-           #include <string.h>
-           #include <sys/mman.h>
-           #include <unistd.h>
+int main(int argc, char* argv[]){
+    //Trata de parametros
+    if (argc != 3)
+        errExit("Argumentos incorrectos para player");
 
-           int
-           main(int argc, char *argv[])
-           {
-               int            fd;
-               char           *shmpath, *string;
-               size_t         len;
-               struct shmbuf  *shmp;
+    int width = atoi(argv[1]);
+    int height = atoi(argv[2]);
+    
+    //Manejo de memoria compartida
+    int fd_bgs, fd_ss;
+    boardGameState* shm_bgs;
+    syncState * shm_ss;
 
-               if (argc != 3) {
-                   fprintf(stderr, "Usage: %s /shm-path string\n", argv[0]);
-                   exit(EXIT_FAILURE);
-               }
+    //Abrimos y mapeamos la shm del gameboard
+    fd_bgs = shm_open(GAME_STATE_PATH, O_RDWR, 0);
+    if (fd_bgs == -1)
+        errExit("shm_open boardGameState in view");
 
-               shmpath = argv[1];
-               string = argv[2];
-               len = strlen(string);
+    shm_bgs = mmap(NULL, BOARD_GAME_STATE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd_bgs, 0);
+    if (shm_bgs == MAP_FAILED)
+        errExit("mmap boardGameState in view");
 
-               if (len > BUF_SIZE) {
-                   fprintf(stderr, "String is too long\n");
-                   exit(EXIT_FAILURE);
-               }
+    //abrimos y mapeamos la shm de sincronizacion
+    fd_ss = shm_open(SYNC_STATE_PATH, O_RDWR, 0);
+    if (fd_ss == -1)
+        errExit("shm_open syncState in view");
 
+    shm_ss = mmap(NULL, SYNC_STATE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd_ss, 0);
+    if (shm_ss == MAP_FAILED)
+        errExit("mmap syncState in view");
+
+    printf("Llegamos a antes del light switch\n");
+    //LIGHTSWITCH! 
+    while(1){
+        printf("Entramos al light switch\n");
+        if (sem_wait(&shm_ss->writer) == -1)
+            errExit("sem_wait writer");
+        if (sem_post(&shm_ss->writer) == -1)
+            errExit("sem_post writer");
+        if (sem_wait(&shm_ss->readersCountMutex) == -1)
+            errExit("sem_wait readersCountMutex");
+        if (shm_ss->readersCount++ == 0)
+            if (sem_wait(&shm_ss->mutex) == -1)
+                errExit("sem_wait mutex");
+        if (sem_post(&shm_ss->readersCountMutex) == -1) 
+            errExit("sem_post readersCountMutex");
+
+        //TO DO: CONSULTAR ESTADO
+
+        if (sem_wait(&shm_ss->readersCountMutex) == -1)
+            errExit("sem_wait readersCountMutex");
+        if (shm_ss->readersCount-- == 1)
+            if (sem_post(&shm_ss->mutex) == -1)
+                errExit("sem_post mutex");
+        if (sem_post(&shm_ss->readersCountMutex) == -1)
+            errExit("sem_post readersCountMutex");  
+            
+        //TO DO: DECIDIR SIGUIENTE MOVIMIENTO
+
+        //TO DO: ENVIAR MOVIMIENTO
+    }   
+
+    exit(EXIT_SUCCESS);
+}
+        //    int
+        //    main(int argc, char *argv[])
+        //    {
+            //    int            fd;
+            //    char           *shmpath, *string;
+            //    size_t         len;
+            //    struct shmbuf  *shmp;
+// 
+            //    if (argc != 3) {
+                //    fprintf(stderr, "Usage: %s /shm-path string\n", argv[0]);
+                //    exit(EXIT_FAILURE);
+            //    }
+// 
+            //    shmpath = argv[1];
+            //    string = argv[2];
+            //    len = strlen(string);
+// 
+            //    if (len > BUF_SIZE) {
+                //    fprintf(stderr, "String is too long\n");
+                //    exit(EXIT_FAILURE);
+            //    }
+// 
                //CODIGO ORIGINAL DEL PLAYER
-    for (int i = 0; i < 100; i++){
-        printf("%d", time(NULL)%8);
-    }
-
-               /* Open the existing shared memory object and map it
-                  into the caller's address space. */
-
-               fd = shm_open(shmpath, O_RDWR, 0);
-               if (fd == -1)
-                   errExit("shm_open");
-
-               shmp = mmap(NULL, sizeof(*shmp), PROT_READ | PROT_WRITE,
-                           MAP_SHARED, fd, 0);
-               if (shmp == MAP_FAILED)
-                   errExit("mmap");
-
-    // Print the original string before copying it to shared memory.
-    printf("\nOriginal string: %s\n", string);
-
-               /* Copy data into the shared memory object. */
-
-               shmp->cnt = len;
-               memcpy(&shmp->buf, string, len);
-
-               /* Tell peer that it can now access shared memory. */
-
-               if (sem_post(&shmp->sem1) == -1)
-                   errExit("sem_post");
-
-               /* Wait until peer says that it has finished accessing
-                  the shared memory. */
-
-               if (sem_wait(&shmp->sem2) == -1)
-                   errExit("sem_wait");
-
-               /* Write modified data in shared memory to standard output. */
-
-               if (write(STDOUT_FILENO, &shmp->buf, len) == -1)
-                   errExit("write");
-               if (write(STDOUT_FILENO, "\n", 1) == -1)
-                   errExit("write");
-
-                       // Print the modified data in shared memory to standard output.
-    printf("Player Final string (uppercase): %.*s\n", (int)shmp->cnt, shmp->buf);
-
-               exit(EXIT_SUCCESS);
-           }
-
-
+    // for (int i = 0; i < 100; i++){
+        // printf("%d", time(NULL)%8);
+    // }
+// 
+            //    /* Open the existing shared memory object and map it
+                //   into the caller's address space. */
+// 
+            //    fd = shm_open(shmpath, O_RDWR, 0);
+            //    if (fd == -1)
+                //    errExit("shm_open");
+// 
+            //    shmp = mmap(NULL, sizeof(*shmp), PROT_READ | PROT_WRITE,
+                        //    MAP_SHARED, fd, 0);
+            //    if (shmp == MAP_FAILED)
+                //    errExit("mmap");
+// 
+    //Print the original string before copying it to shared memory.
+    // printf("\nOriginal string: %s\n", string);
+// 
+            //    /* Copy data into the shared memory object. */
+// 
+            //    shmp->cnt = len;
+            //    memcpy(&shmp->buf, string, len);
+// 
+            //    /* Tell peer that it can now access shared memory. */
+// 
+            //    if (sem_post(&shmp->sem1) == -1)
+                //    errExit("sem_post");
+// 
+            //    /* Wait until peer says that it has finished accessing
+                //   the shared memory. */
+// 
+            //    if (sem_wait(&shmp->sem2) == -1)
+                //    errExit("sem_wait");
+// 
+            //    /* Write modified data in shared memory to standard output. */
+// 
+            //    if (write(STDOUT_FILENO, &shmp->buf, len) == -1)
+                //    errExit("write");
+            //    if (write(STDOUT_FILENO, "\n", 1) == -1)
+                //    errExit("write");
+// 
+                       //Print the modified data in shared memory to standard output.
+    // printf("Player Final string (uppercase): %.*s\n", (int)shmp->cnt, shmp->buf);
+// 
+            //    exit(EXIT_SUCCESS);
+        //    }
+// 
+// 
+// 

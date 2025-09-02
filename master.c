@@ -44,8 +44,24 @@ int main(int argc, char *argv[]){
         if(execve(viewPath, viewArgs, environ) == -1)
             errExit("execve view");
     }
+    
+    //INICIALIZACION DE UN PROCESO PLAYER
+    int playerStatus;
+    pid_t playerPid = fork();
+    if (playerPid == -1)
+        errExit("fork view");
+
+    char * playerPath = "./player"; 
+    char * playerArgs[] = {"./player", heightStr, widthStr, NULL};
+
+    if(playerPid == 0){   //Si el PID = 0 es el hijo
+        if(execve(playerPath, playerArgs, environ) == -1)
+            errExit("execve player");
+    }
 
     for (int i = 0; i < 10; i++){
+        //PRIMERO DIBUJARMOS
+        
         //Se avisa a la vista que puede imprimir
         if (sem_post(&shm_ss->A) == -1)
             errExit("sem_post A");
@@ -59,6 +75,18 @@ int main(int argc, char *argv[]){
 
         //TO-DO: IMPLEMENTAR EL TIME-OUT PARA LA IMPRESION POR PARAMETRO.
         sleep(1);
+
+        //DESPUES DIBUJAMOS
+        //TO-DO: RECIBIR MOVIMIENTO POR PIPES
+        if (sem_wait(&shm_ss->mutex) == -1)
+                errExit("sem_wait mutex");
+        if (sem_wait(&shm_ss->writer) == -1)
+            errExit("sem_wait writer");
+        if (sem_post(&shm_ss->writer) == -1)
+            errExit("sem_post writer");
+        //TODO: EJECUTAR MOVIMIENTOS
+        if (sem_post(&shm_ss->mutex) == -1)
+            errExit("sem_post mutex");
     }
 
     shm_bgs->isGameOver = 1;

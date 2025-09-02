@@ -75,14 +75,14 @@ syncState* createShmSyncState(){
     //Inicializacion
     if (sem_init(&shmp->A, 1, 0) == -1) errExit("sem_init A");
     if (sem_init(&shmp->B, 1, 0) == -1) errExit("sem_init B");
-    if (sem_init(&shmp->C, 1, 1) == -1) errExit("sem_init C");
-    if (sem_init(&shmp->D, 1, 1) == -1) errExit("sem_init D");
-    if (sem_init(&shmp->E, 1, 1) == -1) errExit("sem_init E");
-    shmp->F = 0;
+    if (sem_init(&shmp->writer, 1, 1) == -1) errExit("sem_init writer");
+    if (sem_init(&shmp->mutex, 1, 1) == -1) errExit("sem_init mutex");
+    if (sem_init(&shmp->readersCountMutex, 1, 1) == -1) errExit("sem_init readersCountMutex");
+    shmp->readersCount = 0;
     
    for (int i = 0; i < 9; i++) {
-        if (sem_init(&shmp->G[i], 1, 0) == -1)
-            errExit("sem_init G[i]");
+        if (sem_init(&shmp->playerSem[i], 1, 0) == -1)
+            errExit("sem_init playerSem[i]");
     }
 
     return shmp;

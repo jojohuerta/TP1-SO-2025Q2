@@ -21,11 +21,11 @@ typedef char bool;
 typedef struct {
     sem_t A; // El máster le indica a la vista que hay cambios por imprimir
     sem_t B; // La vista le indica al máster que terminó de imprimir
-    sem_t C; // Mutex para evitar inanición del máster al acceder al estado
-    sem_t D; // Mutex para el estado del juego
-    sem_t E; // Mutex para la siguiente variable
-    unsigned int F; // Cantidad de jugadores leyendo el estado
-    sem_t G[9]; // Le indican a cada jugador que puede enviar 1 movimiento
+    sem_t writer; // Mutex para evitar inanición del máster al acceder al estado //WRITER
+    sem_t mutex; // Mutex para el estado del juego                              //MUTEX
+    sem_t readersCountMutex; // Mutex para la siguiente variable                            //READERS_COUNT_MUTEX
+    unsigned int readersCount; // Cantidad de jugadores leyendo el estado              //READERS_COUNT
+    sem_t playerSem[9]; // Le indican a cada jugador que puede enviar 1 movimiento  //CON ESTE SE LE AVISA A CADA JUGADOR QUE PUEDE JUGAR
 } syncState;
 
 typedef struct {
