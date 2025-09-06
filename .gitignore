@@ -55,3 +55,11 @@ dkms.conf
 *.dwo
 \bin
 .bash_history
+
+# VS Code settings
+.vscode/
+
+# master, player and view executables
+master
+player
+view
