@@ -111,7 +111,7 @@ int main(int argc, char *argv[]){
             //TODO: Validar que sea valido. Por ahora vamos a asumir que si lo es.
             //Aca se ejecuta pero asumiendo que todo sale bien
         interpretMovement(mov, shm_bgs, 0);
-        shm_bgs->boardStart[shm_bgs->players[0].x + shm_bgs->players[0].y * shm_bgs->boardHeight]=1;
+        shm_bgs->boardStart[shm_bgs->players[0].x + shm_bgs->players[0].y * shm_bgs->boardHeight]=-1;
 
         if (sem_post(&shm_ss->mutex) == -1)
             errExit("sem_post mutex");
