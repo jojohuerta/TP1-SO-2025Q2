@@ -57,6 +57,7 @@ int main(int argc, char* argv[]){
     if (playerID == -1)
         errExit("No se pudo determinar el playerID (getpid no encontrado)");
 
+    bool blocked;
 
     //LIGHTSWITCH! 
     while(1){
@@ -77,9 +78,11 @@ int main(int argc, char* argv[]){
             errExit("sem_post readersCountMutex");
 
         //TO DO: CONSULTAR ESTADO
-        //Si termino, exitear
+        //Consulto el estado a ver si el jugador esta bloqueado
+        //Recuerdo que solamente leo y luego ejecuto, porque se deben liberar los semaforos mas adelante
+        //Si rompo aca, no los libero y dejo el mutex bloqueado
         if (shm_bgs->players[playerID].isBlocked)
-            break;
+            blocked = shm_bgs->players[playerID].isBlocked;
 
         if (sem_wait(&shm_ss->readersCountMutex) == -1)
             errExit("sem_wait readersCountMutex");
@@ -88,7 +91,11 @@ int main(int argc, char* argv[]){
                 errExit("sem_post mutex");
         if (sem_post(&shm_ss->readersCountMutex) == -1)
             errExit("sem_post readersCountMutex");  
-            
+        
+        if (blocked){
+            break;
+        }
+
         //TO DO: DECIDIR SIGUIENTE MOVIMIENTO
         unsigned char nextMov = movAnalysis();
         
