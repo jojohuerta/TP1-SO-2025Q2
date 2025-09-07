@@ -9,15 +9,6 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-void loadPlayer1(boardGameState * shm_bgs){
-    shm_bgs->players[0].isBlocked=0;
-    shm_bgs->players[0].invalidMovementRequests=0;
-    shm_bgs->players[0].validMovementRequests=0;
-    shm_bgs->players[0].x=4;
-    shm_bgs->players[0].y=4;
-    shm_bgs->players[0].score=0;
-}
-
 int main(int argc, char* argv[]){
     //Trata de parametros
     if (argc != 3)
@@ -26,6 +17,7 @@ int main(int argc, char* argv[]){
     int width = atoi(argv[1]);
     int height = atoi(argv[2]);
     
+    //TO DO: REVISAR SI ES NECESARIO
     initRandom();
 
     //Manejo de memoria compartida
@@ -51,15 +43,26 @@ int main(int argc, char* argv[]){
     if (shm_ss == MAP_FAILED)
         errExit("mmap syncState in player");
 
-    //loadPlayer1(shm_bgs);
-    int playerID = 0; // Cambiar si el jugador no es el 0
+    pid_t my_pid = getpid();
+    int playerID = -1;
+    for (int i = 0; i < shm_bgs->playerAmount; i++) {
+        if (shm_bgs->players[i].processID == my_pid) {
+            playerID = i;
+            break;
+        }
+    }
+
+    fprintf(stderr, "PlayerID : %d\n", playerID);
+
+    if (playerID == -1)
+        errExit("No se pudo determinar el playerID (getpid no encontrado)");
+
 
     //LIGHTSWITCH! 
     while(1){
-    // Espera a que el máster le dé permiso de actuar
-    if (sem_wait(&shm_ss->playerSem[playerID]) == -1)
-        errExit("sem_wait playerSem");
-
+    // Espera a que el master le de permiso para actuar
+        if (sem_wait(&shm_ss->playerSem[playerID]) == -1)
+            errExit("sem_wait playerSem");
 
         if (sem_wait(&shm_ss->writer) == -1)
             errExit("sem_wait writer");
@@ -88,7 +91,10 @@ int main(int argc, char* argv[]){
             
         //TO DO: DECIDIR SIGUIENTE MOVIMIENTO
         unsigned char nextMov = movAnalysis();
-        //printf("%c", nextMov);
+        
+        //fprintf(stderr, "Movimiento elegido (c): %c\n", nextMov);
+        //fprintf(stderr, "Movimiento elegido (d): %d\n", nextMov);
+
         //TO DO: ENVIAR MOVIMIENTO
         if (write(1, &nextMov, 1) == -1)
             errExit("write player");

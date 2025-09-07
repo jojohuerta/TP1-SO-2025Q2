@@ -9,8 +9,7 @@
 #include "include/shmConstants.h"
 #include "include/utilities.h"
 
-//TO DO - CORREGIR LAS CONSTANTES DE BOARD GAME STATE
-boardGameState * createShmBoardGameState(){
+boardGameState * createShmBoardGameState(int boardWidth, int boardHeight, int playerAmount){
     int fd;
     char * shmpath = GAME_STATE_PATH;
     boardGameState * shmp;
@@ -30,16 +29,16 @@ boardGameState * createShmBoardGameState(){
     if (shmp == MAP_FAILED)
         errExit("mmap");
 
-    close(fd); //TODO, dudoso
+    close(fd);
 
     //Inicializacion
-    shmp->boardWidth = HEIGHT;
-    shmp->boardHeight = HEIGHT;
-    shmp->playerAmount = TWO;
+    shmp->boardWidth = boardWidth;
+    shmp->boardHeight = boardHeight;
+    shmp->playerAmount = playerAmount;
     shmp->isGameOver = 0;
     memset(shmp->players, 0, sizeof(shmp->players));
-    for (int i = 0; i < HEIGHT * HEIGHT; i++) {
-        shmp->boardStart[i] = 0; // shmp->boardStart[i] = getSquareValue();
+    for (int i = 0; i < boardHeight * boardWidth; i++) {
+        shmp->boardStart[i] = getSquareValue(); //shmp->boardStart[i] = 0; //
     }
 
     return shmp;
