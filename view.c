@@ -37,6 +37,7 @@ int main(int argc, char* argv[]){
     if (shm_ss == MAP_FAILED)
         errExit("mmap syncState in view");
 
+    int turno = 0;
     while (1){
         //Hay que esperar a que se pueda 
         if (sem_wait(&shm_ss->A) == -1)
@@ -46,7 +47,10 @@ int main(int argc, char* argv[]){
             break;
 
         //system("clear"); //Hay alguna mejor opcion? "cls"?
-printf("X=%d, Y=%d\n", shm_bgs->players[0].x,shm_bgs->players[0].y );
+        printf("Jugador 0: X=%d, Y=%d. Turno %d de view.\n", shm_bgs->players[0].x,shm_bgs->players[0].y, turno);
+        printf("Jugador 1: X=%d, Y=%d. Turno %d de view.\n", shm_bgs->players[1].x,shm_bgs->players[1].y, turno);
+        turno++;
+
         //Efectivamente, se dibuja
         draw(shm_bgs);
 
@@ -58,6 +62,10 @@ printf("X=%d, Y=%d\n", shm_bgs->players[0].x,shm_bgs->players[0].y );
     //Habria que dibujar una game over screen:
         //system("clear");
         draw(shm_bgs);
+
+    for (int j = 0; j < shm_bgs->playerAmount; j++){
+        printf("El jugador %d tuvo %d movimientos validos y %d movimientos invalidos.\n",j, shm_bgs->players[j].validMovementRequests, shm_bgs->players[j].invalidMovementRequests );
+    }
 
     //Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen
     if (sem_post(&shm_ss->B) == -1)

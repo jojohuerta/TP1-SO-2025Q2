@@ -52,8 +52,6 @@ int main(int argc, char* argv[]){
         }
     }
 
-    fprintf(stderr, "PlayerID : %d\n", playerID);
-
     if (playerID == -1)
         errExit("No se pudo determinar el playerID (getpid no encontrado)");
 

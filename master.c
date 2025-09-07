@@ -157,9 +157,6 @@ int main(int argc, char *argv[]){
         }
     }
 
-    // int playerReadFd = pipefd[0];
-    // loadPlayer1(shm_bgs);
-
     //temporary loading of players
     for (int i = 0; i < player_count; i++) {
     shm_bgs->players[i].x = 1 + i;  // solo ejemplo
@@ -175,7 +172,18 @@ int main(int argc, char *argv[]){
     fd_set readfds;
     int maxfd = -1;
 
-    for (int turn = 0; turn < 5; turn++){
+    // Para round robin 
+    int last_player_index = -1;  
+
+    if (view_path != NULL) {
+        if (sem_post(&shm_ss->A) == -1)
+            errExit("sem_post A inicial");
+
+        if (sem_wait(&shm_ss->B) == -1)
+            errExit("sem_wait B inicial");
+    }
+
+    for (int turn = 0; turn < 31; turn++){
 
         //NOS ENCARGAMOS DE LOS PLAYERS
         
@@ -192,6 +200,8 @@ int main(int argc, char *argv[]){
         maxfd = -1;
 
         for (int i = 0; i < player_count; i++) {
+            if (shm_bgs->players[i].isBlocked)
+                continue;
             //Se agrega al set y luego se actualiza el maximo.
             FD_SET(playerFds[i], &readfds);
             if (playerFds[i] > maxfd)
@@ -209,27 +219,33 @@ int main(int argc, char *argv[]){
 
         // Procesamos los jugadores que mandaron movimiento
         for (int i = 0; i < player_count; i++) {
-        if (FD_ISSET(playerFds[i], &readfds)) {
-            unsigned char mov;
-            read(playerFds[i], &mov, 1);
+            if (FD_ISSET(playerFds[i], &readfds)) {
+                unsigned char mov;
+                ssize_t r = read(playerFds[i], &mov, 1);
 
-            printf("Movimiento recibido por parte del jugador %d: %d\n", i, mov);
+                if (r <= 0) {//Si read retorna 0 es que se llego al EOF. Si retorna -1 hubo un error.
+                    shm_bgs->players[i].isBlocked = 1;
+                    printf("Jugador %d bloqueado por EOF\n", i);
+                    continue;
+                }
 
-            // Lock para modificar el estado compartido. Zona critica
-            if (sem_wait(&shm_ss->mutex) == -1)
-                errExit("sem_wait mutex");
+                printf("Turno %d del master. Movimiento recibido por parte del jugador %d: %d\n", turn+1, i, mov);
 
-            if (sem_wait(&shm_ss->writer) == -1)
-                errExit("sem_wait writer");
-            if (sem_post(&shm_ss->writer) == -1)
-                errExit("sem_post writer");
+                // Lock para modificar el estado compartido. Zona critica
+                if (sem_wait(&shm_ss->mutex) == -1)
+                    errExit("sem_wait mutex");
 
-            // Ejecutar movimiento
-            interpretMovement(mov, shm_bgs, i);
+                if (sem_wait(&shm_ss->writer) == -1)
+                    errExit("sem_wait writer");
+                if (sem_post(&shm_ss->writer) == -1)
+                    errExit("sem_post writer");
 
-            if (sem_post(&shm_ss->mutex) == -1)
-                errExit("sem_post mutex");
-        }
+                // Ejecutar movimiento
+                interpretMovement(mov, shm_bgs, i);
+
+                if (sem_post(&shm_ss->mutex) == -1)
+                    errExit("sem_post mutex");
+            }
         }
 
         //DIBUJARMOS
@@ -266,7 +282,7 @@ int main(int argc, char *argv[]){
     }
     }
     
-
+    
     closeShmBoardGameState(shm_bgs);
     closeShmSyncState(shm_ss);
 
