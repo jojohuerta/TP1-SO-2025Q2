@@ -31,7 +31,7 @@ int main(int argc, char *argv[]){
     int width = 10;
     int height = 10;
     int delay = 200;
-    int timeout = 1;
+    int timeout = 10;
     unsigned int seed = (unsigned int)time(NULL);
     char *view_path = NULL;
     char *players[9];
@@ -173,7 +173,7 @@ int main(int argc, char *argv[]){
     int maxfd = -1;
 
     // Para round robin 
-    int last_player_index = -1;  
+    int lastPlayerIndex = -1;  
 
     if (view_path != NULL) {
         if (sem_post(&shm_ss->A) == -1)
@@ -183,8 +183,11 @@ int main(int argc, char *argv[]){
             errExit("sem_wait B inicial");
     }
 
-    for (int turn = 0; turn < 31; turn++){
+    time_t lastValidMov = time(NULL);
 
+    int turn = 0;
+    while (1){
+        turn++;
         //NOS ENCARGAMOS DE LOS PLAYERS
         
         // Señal a todos los jugadores para que actuen
@@ -217,19 +220,42 @@ int main(int argc, char *argv[]){
         if (readyAmountOfFD == -1)
             errExit("select");
 
-        // Procesamos los jugadores que mandaron movimiento
-        for (int i = 0; i < player_count; i++) {
-            if (FD_ISSET(playerFds[i], &readfds)) {
-                unsigned char mov;
-                ssize_t r = read(playerFds[i], &mov, 1);
+        int validMov = 0;
 
-                if (r <= 0) {//Si read retorna 0 es que se llego al EOF. Si retorna -1 hubo un error.
-                    shm_bgs->players[i].isBlocked = 1;
-                    printf("Jugador %d bloqueado por EOF\n", i);
+        int playersServed = 0;
+        int playersToServe = 0;
+
+        // Contar jugadores activos (no bloqueados)
+        for (int i = 0; i < player_count; i++) {
+            if (!shm_bgs->players[i].isBlocked) {
+                playersToServe++;
+            }
+        }
+
+        if (playersToServe > 0) {
+            
+            int currentPlayer = lastPlayerIndex;
+            
+            while (playersServed < playersToServe) {
+                currentPlayer = (currentPlayer + 1) % player_count;
+
+                // Saltar bloqueados o jugadores sin datos
+                if (shm_bgs->players[currentPlayer].isBlocked || !FD_ISSET(playerFds[currentPlayer], &readfds)) {
+                    playersServed++;  
                     continue;
                 }
 
-                printf("Turno %d del master. Movimiento recibido por parte del jugador %d: %d\n", turn+1, i, mov);
+                unsigned char mov;
+                ssize_t r = read(playerFds[currentPlayer], &mov, 1);
+
+                if (r <= 0) { //Si read retorna 0 es que se llego al EOF. Si retorna -1 hubo un error.
+                    shm_bgs->players[currentPlayer].isBlocked = 1;
+                    printf("Jugador %d bloqueado por EOF o error\n", currentPlayer);
+                    playersServed++;
+                    continue;
+                }
+
+                printf("Turno %d del master. Movimiento recibido por parte del jugador %d: %d\n", turn+1, currentPlayer, mov);
 
                 // Lock para modificar el estado compartido. Zona critica
                 if (sem_wait(&shm_ss->mutex) == -1)
@@ -240,11 +266,30 @@ int main(int argc, char *argv[]){
                 if (sem_post(&shm_ss->writer) == -1)
                     errExit("sem_post writer");
 
-                // Ejecutar movimiento
-                interpretMovement(mov, shm_bgs, i);
+                // Validar y ejecutar movimiento
+                int movWasValid = interpretMovement(mov, shm_bgs, currentPlayer);
+                if (movWasValid) {
+                    validMov = 1;
+                }
 
                 if (sem_post(&shm_ss->mutex) == -1)
                     errExit("sem_post mutex");
+
+                playersServed++;
+            }
+
+            lastPlayerIndex = currentPlayer;
+        }
+
+        //Verificar si hubo timeout
+        if (validMov) {
+            lastValidMov = time(NULL);
+        } else {
+            time_t currentTime = time(NULL);
+            if (difftime(currentTime, lastValidMov) >= timeout) {
+                printf("Timeout global alcanzado: %d segundos sin movimientos válidos. Fin del juego.\n", timeout);
+                shm_bgs->isGameOver = 1;
+                break; 
             }
         }
 
@@ -259,9 +304,8 @@ int main(int argc, char *argv[]){
                 errExit("sem_wait B");
         }
 
-        //TO-DO: IMPLEMENTAR EL TIME-OUT PARA LA IMPRESION POR PARAMETRO.
-        sleep(1);
-
+        //usleep esta en microsegundos
+        usleep(delay * 1000);  
     }
 
     shm_bgs->isGameOver = 1;

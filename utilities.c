@@ -4,7 +4,7 @@
 #include <time.h>
 #include <stdlib.h>
 
-void interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player) {
+int interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player) {
     int dx = 0, dy = 0;
 
     switch (mov) {
@@ -18,7 +18,7 @@ void interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player) {
         case 7: dx = -1; dy = -1; break; // Arriba e izquierda
         default:
             shm_bgs->players[player].invalidMovementRequests++;
-            return;
+            return 0;
     }
 
     int oldX = shm_bgs->players[player].x;
@@ -31,7 +31,7 @@ void interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player) {
     // Validacion de si no se fue del tablero
     if (newX < 0 || newX >= shm_bgs->boardWidth || newY < 0 || newY >= shm_bgs->boardHeight) {
         shm_bgs->players[player].invalidMovementRequests++;
-        return;
+        return 0;
     }
 
     int newPosIndex = newX + newY * shm_bgs->boardHeight;
@@ -39,7 +39,7 @@ void interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player) {
     // Validacion si la nueva casilla esta libre
     if (shm_bgs->boardStart[newPosIndex] <= 0) {
         shm_bgs->players[player].invalidMovementRequests++;
-        return;
+        return 0;
     }
 
     // Si llego hasta aca, el movimiento es válido
@@ -50,6 +50,7 @@ void interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player) {
 
     shm_bgs->boardStart[newPosIndex] = (-1) * player;    
     shm_bgs->players[player].validMovementRequests++;
+    return 1;
 }
 
 
