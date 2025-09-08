@@ -73,7 +73,7 @@ int main(int argc, char *argv[]){
     boardGameState * shm_bgs;
     syncState * shm_ss;
 
-    shm_bgs = createShmBoardGameState(width, height, player_count);
+    shm_bgs = createShmBoardGameState(width, height, player_count, seed);
     shm_ss = createShmSyncState();
 
     //INICIALIZACION DEL PROCESO VIEW

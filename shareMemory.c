@@ -10,11 +10,11 @@
 #include "include/shmConstants.h"
 #include "include/utilities.h"
 
-boardGameState * createShmBoardGameState(int boardWidth, int boardHeight, int playerAmount){
+boardGameState * createShmBoardGameState(int boardWidth, int boardHeight, int playerAmount, unsigned int seed){
     int fd;
     char * shmpath = GAME_STATE_PATH;
     boardGameState * shmp;
-    initRandom();
+    srand(seed); 
 
     //Creacion
     fd = shm_open(shmpath, O_CREAT | O_EXCL | O_RDWR, 0600);
