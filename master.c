@@ -17,15 +17,6 @@ extern char **environ;
 extern int optind;
 extern char *optarg;
 
-void loadPlayer1(boardGameState * shm_bgs){
-    shm_bgs->players[0].isBlocked=0;
-    shm_bgs->players[0].invalidMovementRequests=0;
-    shm_bgs->players[0].validMovementRequests=0;
-    shm_bgs->players[0].x=4;
-    shm_bgs->players[0].y=4;
-    shm_bgs->players[0].score=0;
-}
-
 int main(int argc, char *argv[]){
     //Trata de parametros
     int width = 10;
@@ -166,14 +157,12 @@ int main(int argc, char *argv[]){
     shm_bgs->players[i].invalidMovementRequests = 0;
     shm_bgs->players[i].validMovementRequests = 0;
     shm_bgs->players[i].processID = playerPids[i];
+    shm_bgs->boardStart[(shm_bgs->players[i].y * shm_bgs->boardWidth) + shm_bgs->players[i].x] = (-1) * i;
     }
-    shm_bgs->playerAmount = player_count;
+    //shm_bgs->playerAmount = player_count;
 
     fd_set readfds;
     int maxfd = -1;
-
-    // Para round robin 
-    int lastPlayerIndex = -1;  
 
     if (view_path != NULL) {
         if (sem_post(&shm_ss->A) == -1)
@@ -183,79 +172,51 @@ int main(int argc, char *argv[]){
             errExit("sem_wait B inicial");
     }
 
+    // Para round robin 
+    int turn = 0;
+    int currentPlayerIndex = 0;
     time_t lastValidMov = time(NULL);
 
-    int turn = 0;
     while (1){
         turn++;
-        //NOS ENCARGAMOS DE LOS PLAYERS
-        
-        // Señal a todos los jugadores para que actuen
-        for (int i = 0; i < player_count; i++) {
-            if (sem_post(&shm_ss->playerSem[i]) == -1)
-                errExit("sem_post playerSem");
+
+        //Veamos si hay timeout
+        time_t currentTime = time(NULL);
+        if (difftime(currentTime, lastValidMov) >= timeout) {
+            printf("Timeout global alcanzado: %d segundos sin movimientos válidos. Fin del juego.\n", timeout);
+            shm_bgs->isGameOver = 1;
+            break; 
         }
 
-        //Se limpia el readfds 
+        // 2. Opcional: Chequeo de fin de juego si todos los jugadores están bloqueados
+
+        //Nos encargamos de el player que le corresponde el turno
+        if (sem_post(&shm_ss->playerSem[currentPlayerIndex]) == -1) {
+            errExit("sem_post player_turn");
+        }
+
+        //Esperar al jugador a que de su respuesta (al que le corresponde el turno)
+
+        //Se limpia el readfds y se asigna al set el que se debe escuchar
         FD_ZERO(&readfds);
+        FD_SET(playerFds[currentPlayerIndex], &readfds);
 
-        //Se busca cual es el mas grande (para usar en el select)
-        maxfd = -1;
-
-        for (int i = 0; i < player_count; i++) {
-            if (shm_bgs->players[i].isBlocked)
-                continue;
-            //Se agrega al set y luego se actualiza el maximo.
-            FD_SET(playerFds[i], &readfds);
-            if (playerFds[i] > maxfd)
-                maxfd = playerFds[i];
-        }
-
-        // Esperamos que jugadores manden un movimiento o se llegue al timeout
         struct timeval tv;
         tv.tv_sec = timeout;
         tv.tv_usec = 0;
 
-        int readyAmountOfFD = select(maxfd + 1, &readfds, NULL, NULL, &tv);
-        if (readyAmountOfFD == -1)
-            errExit("select");
+        int readyAmountOfFD = select(playerFds[currentPlayerIndex] + 1, &readfds, NULL, NULL, &tv);
 
-        int validMov = 0;
-
-        int playersServed = 0;
-        int playersToServe = 0;
-
-        // Contar jugadores activos (no bloqueados)
-        for (int i = 0; i < player_count; i++) {
-            if (!shm_bgs->players[i].isBlocked) {
-                playersToServe++;
-            }
-        }
-
-        if (playersToServe > 0) {
-            
-            int currentPlayer = lastPlayerIndex;
-            
-            while (playersServed < playersToServe) {
-                currentPlayer = (currentPlayer + 1) % player_count;
-
-                // Saltar bloqueados o jugadores sin datos
-                if (shm_bgs->players[currentPlayer].isBlocked || !FD_ISSET(playerFds[currentPlayer], &readfds)) {
-                    playersServed++;  
-                    continue;
-                }
-
-                unsigned char mov;
-                ssize_t r = read(playerFds[currentPlayer], &mov, 1);
-
-                if (r <= 0) { //Si read retorna 0 es que se llego al EOF. Si retorna -1 hubo un error.
-                    shm_bgs->players[currentPlayer].isBlocked = 1;
-                    printf("Jugador %d bloqueado por EOF o error\n", currentPlayer);
-                    playersServed++;
-                    continue;
-                }
-
-                printf("Turno %d del master. Movimiento recibido por parte del jugador %d: %d\n", turn+1, currentPlayer, mov);
+        if (readyAmountOfFD > 0) {
+            unsigned char mov;
+            ssize_t r = read(playerFds[currentPlayerIndex], &mov, 1);
+        
+            if (r <= 0) {
+            // El jugador se bloqueo (pipe cerrado o error)
+                shm_bgs->players[currentPlayerIndex].isBlocked = 1;
+            } else {
+                // Se recibiO un movimiento
+                printf("Turno %d del master. Movimiento recibido por parte del jugador %d: %d\n", turn+1, currentPlayerIndex, mov);
 
                 // Lock para modificar el estado compartido. Zona critica
                 if (sem_wait(&shm_ss->mutex) == -1)
@@ -267,30 +228,18 @@ int main(int argc, char *argv[]){
                     errExit("sem_post writer");
 
                 // Validar y ejecutar movimiento
-                int movWasValid = interpretMovement(mov, shm_bgs, currentPlayer);
+                int movWasValid = interpretMovement(mov, shm_bgs, currentPlayerIndex);
                 if (movWasValid) {
-                    validMov = 1;
+                    lastValidMov = time(NULL);
                 }
-
                 if (sem_post(&shm_ss->mutex) == -1)
                     errExit("sem_post mutex");
-
-                playersServed++;
             }
-
-            lastPlayerIndex = currentPlayer;
-        }
-
-        //Verificar si hubo timeout
-        if (validMov) {
-            lastValidMov = time(NULL);
+        } else if (readyAmountOfFD == 0) {
+        // No se recibió movimiento dentro del timeout de select.
+        // El máster simplemente continúa con el siguiente jugador.
         } else {
-            time_t currentTime = time(NULL);
-            if (difftime(currentTime, lastValidMov) >= timeout) {
-                printf("Timeout global alcanzado: %d segundos sin movimientos válidos. Fin del juego.\n", timeout);
-                shm_bgs->isGameOver = 1;
-                break; 
-            }
+            errExit("select");
         }
 
         //DIBUJARMOS
@@ -306,6 +255,17 @@ int main(int argc, char *argv[]){
 
         //usleep esta en microsegundos
         usleep(delay * 1000);  
+
+        //Avanzamos con el Round-Robin. Salteamos a los que estan bloqueados
+        currentPlayerIndex = (currentPlayerIndex + 1) % player_count;
+        int aux = currentPlayerIndex;
+        while (shm_bgs->players[currentPlayerIndex].isBlocked) {
+            currentPlayerIndex = (currentPlayerIndex + 1) % player_count;
+            if (currentPlayerIndex == aux){
+                //Todos los jugadores estan bloqueados
+                break;
+            }
+        }
     }
 
     shm_bgs->isGameOver = 1;
