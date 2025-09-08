@@ -48,11 +48,11 @@ int main(int argc, char* argv[]){
             break;
 
         //system("clear"); //Hay alguna mejor opcion? "cls"?
-        printf("Jugador 0: X=%d, Y=%d. Turno %d de view.\n", shm_bgs->players[0].x,shm_bgs->players[0].y, turno);
-        //printf("Jugador 1: X=%d, Y=%d. Turno %d de view.\n", shm_bgs->players[1].x,shm_bgs->players[1].y, turno);
-        turno++;
-
-        //Efectivamente, se dibuja
+        printf("____________________\n");
+        printf("   P  PTS  INV-MOV\n");
+        for(int i=0; i<shm_bgs->playerAmount; i++){
+            printf("   %d   %d    %d  \n", i+1, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests);
+        }
         draw(shm_bgs);
 
         //Se avisa al master que ya se dibujo
@@ -60,13 +60,22 @@ int main(int argc, char* argv[]){
             errExit("sem_post B");
     }
 
-    //Habria que dibujar una game over screen:
-        //system("clear");
-        draw(shm_bgs);
-
-    for (int j = 0; j < shm_bgs->playerAmount; j++){
-        printf("El jugador %d tuvo %d movimientos validos y %d movimientos invalidos.\n",j, shm_bgs->players[j].validMovementRequests, shm_bgs->players[j].invalidMovementRequests );
+    //Game over screen:
+    draw(shm_bgs);
+    printf("\033[1;31m"); 
+    printf("  #####     #    #     # #######       ######## #       # ####### ######\n");
+    printf(" #     #   # #   ##   ## #             #      # #       # #       #     #\n");
+    printf(" #        #   #  # # # # #             #      #  #     #  #       #     #\n");
+    printf(" #  #### #     # #  #  # #####   ##### #      #  #     #  #####   ######\n");
+    printf(" #     # ####### #     # #             #      #   #   #   #       #    #\n");
+    printf(" #     # #     # #     # #             #      #    # #    #       #     #\n");
+    printf("  #####  #     # #     # #######       ########     #     ####### #      #\n");
+    printf("\033[0m"); 
+    printf("PLAYER  POINTS  INVALID-MOVES\n");
+    for(int i=0; i<shm_bgs->playerAmount; i++){
+        printf("  p%d     %d       %d  \n", i+1, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests);
     }
+    printf("\n");
 
     //Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen
     if (sem_post(&shm_ss->B) == -1)
@@ -77,13 +86,20 @@ int main(int argc, char* argv[]){
     return 0;
 }
 
+
 void draw(boardGameState* bgs){
     if (bgs->isGameOver){
         return;
     }
     for (int y = 0; y < bgs->boardHeight; y++){
         for (int x = 0; x < bgs->boardWidth; x++){
-            printf ("%d", bgs->boardStart[(y * bgs->boardWidth) + x]);
+            printf("|");
+            int val = bgs->boardStart[(y * bgs->boardWidth) + x];
+            if (val == 0) {
+                printf("\033[1;31m%d\033[0m", val);
+            } else {
+                printf("%d", val);
+            }
         }
         printf("\n");
     }
