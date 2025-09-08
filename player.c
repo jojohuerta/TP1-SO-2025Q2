@@ -16,6 +16,7 @@ int main(int argc, char* argv[]){
 
     int width = atoi(argv[1]);
     int height = atoi(argv[2]);
+    int boardGameStateSize = sizeof(boardGameState) + sizeof(int) * (width * height);
     
     //TO DO: REVISAR SI ES NECESARIO
     initRandom();
@@ -30,7 +31,7 @@ int main(int argc, char* argv[]){
     if (fd_bgs == -1)
         errExit("shm_open boardGameState in player. Soy del player");
 
-    shm_bgs = mmap(NULL, BOARD_GAME_STATE_SIZE, PROT_READ, MAP_SHARED, fd_bgs, 0);
+    shm_bgs = mmap(NULL, boardGameStateSize, PROT_READ, MAP_SHARED, fd_bgs, 0);
     if (shm_bgs == MAP_FAILED)
         errExit("mmap boardGameState in player");
 
@@ -104,5 +105,8 @@ int main(int argc, char* argv[]){
         if (write(1, &nextMov, 1) == -1)
             errExit("write player");
     }
+    
+    munmap(shm_bgs, boardGameStateSize);
+    munmap(shm_ss, SYNC_STATE_SIZE);
     exit(EXIT_SUCCESS);
 }

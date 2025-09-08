@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
+#include <stddef.h> 
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
@@ -20,12 +21,14 @@ boardGameState * createShmBoardGameState(int boardWidth, int boardHeight, int pl
     if (fd == -1)
         errExit("shm_open");
 
+    int boardGameStateSize = sizeof(boardGameState) + sizeof(int) * (boardWidth * boardHeight);
+
     //expansion
-    if (ftruncate(fd, BOARD_GAME_STATE_SIZE) == -1)
+    if (ftruncate(fd, boardGameStateSize) == -1)
         errExit("ftruncate");
 
     //Mapeo
-    shmp = mmap(NULL, BOARD_GAME_STATE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    shmp = mmap(NULL, boardGameStateSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (shmp == MAP_FAILED)
         errExit("mmap");
 
@@ -38,7 +41,7 @@ boardGameState * createShmBoardGameState(int boardWidth, int boardHeight, int pl
     shmp->isGameOver = 0;
     memset(shmp->players, 0, sizeof(shmp->players));
     for (int i = 0; i < boardHeight * boardWidth; i++) {
-        shmp->boardStart[i] = getSquareValue(); //shmp->boardStart[i] = 0; //
+        shmp->boardStart[i] = getSquareValue(); 
     }
 
     return shmp;
@@ -46,7 +49,9 @@ boardGameState * createShmBoardGameState(int boardWidth, int boardHeight, int pl
 
 void closeShmBoardGameState(boardGameState * shmp){
 
-    if (munmap(shmp, BOARD_GAME_STATE_SIZE) == -1) {
+    int boardGameStateSize = sizeof(boardGameState) + sizeof(int) * (shmp->boardWidth * shmp->boardHeight);
+
+    if (munmap(shmp, boardGameStateSize) == -1) {
         errExit("Error unmapping shmBoardGameState");
     }
 

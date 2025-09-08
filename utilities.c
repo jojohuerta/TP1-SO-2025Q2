@@ -34,7 +34,7 @@ int interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player) {
         return 0;
     }
 
-    int newPosIndex = newX + newY * shm_bgs->boardHeight;
+    int newPosIndex = newX + newY * shm_bgs->boardWidth;
 
     // Validacion si la nueva casilla esta libre
     if (shm_bgs->boardStart[newPosIndex] <= 0) {

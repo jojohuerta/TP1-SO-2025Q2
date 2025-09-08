@@ -9,10 +9,7 @@
 #define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \
                         } while (0)
 
-#define HEIGHT 9
-
 #define GAME_STATE_PATH "/game_state"
-#define GAME_STATE_SIZE sizeof(boardGameState) + sizeof(int) * HEIGHT * HEIGHT
 
 #define SYNC_STATE_PATH "/game_sync"
 #define SYNC_STATE_SIZE sizeof(syncState)
@@ -50,19 +47,6 @@ typedef struct {
 } boardGameState;
        
 //TO BE DEPRECATED:
-
-#define BUF_SIZE 1024   /* Maximum size for exchanged string */
-
-struct shmbuf {
-    sem_t  sem1;            /* POSIX unnamed semaphore */
-    sem_t  sem2;            /* POSIX unnamed semaphore */
-    size_t cnt;             /* Number of bytes used in 'buf' */
-    char   buf[BUF_SIZE];   /* Data being transferred */
-};
-
-
-#define TWO 2
-#define BOARD_GAME_STATE_SIZE sizeof(boardGameState) + sizeof(int) * (HEIGHT * HEIGHT)
 
 
 #endif  // include guard

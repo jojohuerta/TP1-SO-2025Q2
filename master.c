@@ -100,7 +100,7 @@ int main(int argc, char *argv[]){
     snprintf(heightStr, sizeof(heightStr), "%d", height);
     
     //char * viewPath = "./view"; 
-   char * viewArgs[] = {view_path, heightStr, widthStr, NULL};
+   char * viewArgs[] = {view_path, widthStr, heightStr, NULL};
 
     if(viewPid == 0){   //Si el PID = 0 es el hijo
         if(execve(view_path, viewArgs, environ) == -1)

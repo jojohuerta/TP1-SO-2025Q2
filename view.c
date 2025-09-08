@@ -14,6 +14,7 @@ int main(int argc, char* argv[]){
 
     int width = atoi(argv[1]);
     int height = atoi(argv[2]);
+    int boardGameStateSize = sizeof(boardGameState) + sizeof(int) * (width * height);
 
     int fd_bgs, fd_ss;
     boardGameState* shm_bgs;
@@ -24,7 +25,7 @@ int main(int argc, char* argv[]){
     if (fd_bgs == -1)
         errExit("shm_open boardGameState in view.");
 
-    shm_bgs = mmap(NULL, BOARD_GAME_STATE_SIZE, PROT_READ, MAP_SHARED, fd_bgs, 0);
+    shm_bgs = mmap(NULL, boardGameStateSize, PROT_READ, MAP_SHARED, fd_bgs, 0);
     if (shm_bgs == MAP_FAILED)
         errExit("mmap boardGameState in view.");
 
@@ -48,7 +49,7 @@ int main(int argc, char* argv[]){
 
         //system("clear"); //Hay alguna mejor opcion? "cls"?
         printf("Jugador 0: X=%d, Y=%d. Turno %d de view.\n", shm_bgs->players[0].x,shm_bgs->players[0].y, turno);
-        printf("Jugador 1: X=%d, Y=%d. Turno %d de view.\n", shm_bgs->players[1].x,shm_bgs->players[1].y, turno);
+        //printf("Jugador 1: X=%d, Y=%d. Turno %d de view.\n", shm_bgs->players[1].x,shm_bgs->players[1].y, turno);
         turno++;
 
         //Efectivamente, se dibuja
@@ -71,7 +72,7 @@ int main(int argc, char* argv[]){
     if (sem_post(&shm_ss->B) == -1)
         errExit("sem_post B final");
 
-    munmap(shm_bgs, BOARD_GAME_STATE_SIZE);
+    munmap(shm_bgs, boardGameStateSize);
     munmap(shm_ss, SYNC_STATE_SIZE);
     return 0;
 }
@@ -80,9 +81,9 @@ void draw(boardGameState* bgs){
     if (bgs->isGameOver){
         return;
     }
-    for (int i = 0; i < bgs->boardWidth; i++){
-        for (int j = 0; j < bgs->boardHeight; j++){
-            printf ("%d", bgs->boardStart[(i * bgs->boardWidth) + j]);
+    for (int y = 0; y < bgs->boardHeight; y++){
+        for (int x = 0; x < bgs->boardWidth; x++){
+            printf ("%d", bgs->boardStart[(y * bgs->boardWidth) + x]);
         }
         printf("\n");
     }
