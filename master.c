@@ -148,18 +148,8 @@ int main(int argc, char *argv[]){
         }
     }
 
-    //temporary loading of players
-    for (int i = 0; i < player_count; i++) {
-    shm_bgs->players[i].x = 1 + i;  // solo ejemplo
-    shm_bgs->players[i].y = 1 + i;
-    shm_bgs->players[i].score = 0;
-    shm_bgs->players[i].isBlocked = 0;
-    shm_bgs->players[i].invalidMovementRequests = 0;
-    shm_bgs->players[i].validMovementRequests = 0;
-    shm_bgs->players[i].processID = playerPids[i];
-    shm_bgs->boardStart[(shm_bgs->players[i].y * shm_bgs->boardWidth) + shm_bgs->players[i].x] = (-1) * i;
-    }
-    //shm_bgs->playerAmount = player_count;
+    //Loading of players
+    initializeAllPlayers(shm_bgs, player_count, playerPids);
 
     fd_set readfds;
     int maxfd = -1;
@@ -176,6 +166,7 @@ int main(int argc, char *argv[]){
     int turn = 0;
     int currentPlayerIndex = 0;
     time_t lastValidMov = time(NULL);
+    int blockedPlayers = 0;
 
     while (1){
         turn++;
@@ -188,7 +179,12 @@ int main(int argc, char *argv[]){
             break; 
         }
 
-        // 2. Opcional: Chequeo de fin de juego si todos los jugadores están bloqueados
+        //Chequeo si todos los jugadores estan bloqueados
+        if(blockedPlayers >= player_count){
+            printf("Todos los jugadores se encuentran bloqueados\n");
+            shm_bgs->isGameOver = 1;
+            break; 
+        }
 
         //Nos encargamos de el player que le corresponde el turno
         if (sem_post(&shm_ss->playerSem[currentPlayerIndex]) == -1) {
@@ -214,6 +210,7 @@ int main(int argc, char *argv[]){
             if (r <= 0) {
             // El jugador se bloqueo (pipe cerrado o error)
                 shm_bgs->players[currentPlayerIndex].isBlocked = 1;
+                blockedPlayers++;
             } else {
                 // Se recibiO un movimiento
                 printf("Turno %d del master. Movimiento recibido por parte del jugador %d: %d\n", turn+1, currentPlayerIndex, mov);

@@ -3,6 +3,12 @@
 #include <unistd.h>
 #include <time.h>
 #include <stdlib.h>
+#include <math.h>
+
+#ifndef PI
+#define PI 3.141592
+#endif
+
 
 int interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player) {
     int dx = 0, dy = 0;
@@ -43,6 +49,8 @@ int interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player) {
     }
 
     // Si llego hasta aca, el movimiento es válido
+    // Agrego los puntos
+    shm_bgs->players[player].score += shm_bgs->boardStart[(newY * shm_bgs->boardWidth) + newX] ;
 
     // Registrar nuevo movimiento y contarlo como valido
     shm_bgs->players[player].x = newX;
@@ -53,6 +61,51 @@ int interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player) {
     return 1;
 }
 
+void playerInitialization(int player, pid_t playerPid, int playerCount, boardGameState *shm_bgs){
+
+    // Centro del tablero
+    float cx = (shm_bgs->boardWidth - 1) / 2.0f;
+    float cy = (shm_bgs->boardHeight - 1) / 2.0f;
+
+    int x, y;
+
+    if (playerCount == 1) {
+        // Posicionar en el centro exacto del tablero
+        x = (int)(cx + 0.5f);
+        y = (int)(cy + 0.5f);
+    } else {
+        // Elegir un radio seguro que no nos acerque demasiado al borde
+        float margin = 2.0f; // padding 
+        float max_r_x = cx - margin;
+        float max_r_y = cy - margin;
+        float radius = fminf(max_r_x, max_r_y); // radio max posible
+
+        // Angulo para el jugador (radianes)
+        float angle = (2.0f * PI * player) / playerCount;
+
+        // Posicion final del jugador en el circulo (0.5f para redondear)
+        x = (int)(cx + radius * cosf(angle) + 0.5f);
+        y = (int)(cy + radius * sinf(angle) + 0.5f);
+    }
+
+    // Asignar valores al jugador
+    shm_bgs->players[player].x = x;
+    shm_bgs->players[player].y = y;
+    shm_bgs->players[player].score = 0;
+    shm_bgs->players[player].isBlocked = 0;
+    shm_bgs->players[player].invalidMovementRequests = 0;
+    shm_bgs->players[player].validMovementRequests = 0;
+    shm_bgs->players[player].processID = playerPid;
+
+    // Marcar posición en el tablero
+    shm_bgs->boardStart[(y * shm_bgs->boardWidth) + x] = (-1) * player;
+}
+
+void initializeAllPlayers(boardGameState *shm_bgs, int playerCount, pid_t * playerPids){
+    for (int i = 0; i < playerCount; i++){
+        playerInitialization(i, playerPids[i], playerCount, shm_bgs);
+    }
+}
 
 void initRandom() {
     srand(time(NULL) * getpid()); 
