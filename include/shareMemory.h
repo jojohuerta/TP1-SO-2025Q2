@@ -5,9 +5,8 @@
 
 void initRandom();
 
-
 //Crea y mapea el estado del tablero del juego en memoria compartida y retorna un puntero a la estructura mapeada.
-boardGameState* createShmBoardGameState();
+boardGameState * createShmBoardGameState(int boardWidth, int boardHeight, int playerAmount, unsigned int seed );
 
 //Desvincula y elimina el estado del tablero del juego de la memoria compartida.
 void closeShmBoardGameState(boardGameState * shmp);

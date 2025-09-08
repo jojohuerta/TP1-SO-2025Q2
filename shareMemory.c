@@ -3,43 +3,45 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
+#include <stddef.h> 
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
 #include "include/shmConstants.h"
 #include "include/utilities.h"
 
-//TO DO - CORREGIR LAS CONSTANTES DE BOARD GAME STATE
-boardGameState * createShmBoardGameState(){
+boardGameState * createShmBoardGameState(int boardWidth, int boardHeight, int playerAmount, unsigned int seed){
     int fd;
     char * shmpath = GAME_STATE_PATH;
     boardGameState * shmp;
-    initRandom();
+    srand(seed); 
 
     //Creacion
     fd = shm_open(shmpath, O_CREAT | O_EXCL | O_RDWR, 0600);
     if (fd == -1)
         errExit("shm_open");
 
+    int boardGameStateSize = sizeof(boardGameState) + sizeof(int) * (boardWidth * boardHeight);
+
     //expansion
-    if (ftruncate(fd, BOARD_GAME_STATE_SIZE) == -1)
+    if (ftruncate(fd, boardGameStateSize) == -1)
         errExit("ftruncate");
 
     //Mapeo
-    shmp = mmap(NULL, BOARD_GAME_STATE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    shmp = mmap(NULL, boardGameStateSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (shmp == MAP_FAILED)
         errExit("mmap");
 
-    close(fd); //TODO, dudoso
+    close(fd);
 
     //Inicializacion
-    shmp->boardWidth = HEIGHT;
-    shmp->boardHeight = HEIGHT;
-    shmp->playerAmount = TWO;
+    shmp->boardWidth = boardWidth;
+    shmp->boardHeight = boardHeight;
+    shmp->playerAmount = playerAmount;
     shmp->isGameOver = 0;
     memset(shmp->players, 0, sizeof(shmp->players));
-    for (int i = 0; i < HEIGHT * HEIGHT; i++) {
-        shmp->boardStart[i] = 0; // shmp->boardStart[i] = getSquareValue();
+    for (int i = 0; i < boardHeight * boardWidth; i++) {
+        shmp->boardStart[i] = getSquareValue(); 
     }
 
     return shmp;
@@ -47,7 +49,9 @@ boardGameState * createShmBoardGameState(){
 
 void closeShmBoardGameState(boardGameState * shmp){
 
-    if (munmap(shmp, BOARD_GAME_STATE_SIZE) == -1) {
+    int boardGameStateSize = sizeof(boardGameState) + sizeof(int) * (shmp->boardWidth * shmp->boardHeight);
+
+    if (munmap(shmp, boardGameStateSize) == -1) {
         errExit("Error unmapping shmBoardGameState");
     }
 

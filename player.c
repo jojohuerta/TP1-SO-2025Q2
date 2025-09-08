@@ -9,15 +9,6 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-void loadPlayer1(boardGameState * shm_bgs){
-    shm_bgs->players[0].isBlocked=0;
-    shm_bgs->players[0].invalidMovementRequests=0;
-    shm_bgs->players[0].validMovementRequests=0;
-    shm_bgs->players[0].x=4;
-    shm_bgs->players[0].y=4;
-    shm_bgs->players[0].score=0;
-}
-
 int main(int argc, char* argv[]){
     //Trata de parametros
     if (argc != 3)
@@ -25,7 +16,9 @@ int main(int argc, char* argv[]){
 
     int width = atoi(argv[1]);
     int height = atoi(argv[2]);
+    int boardGameStateSize = sizeof(boardGameState) + sizeof(int) * (width * height);
     
+    //TO DO: REVISAR SI ES NECESARIO
     initRandom();
 
     //Manejo de memoria compartida
@@ -38,7 +31,7 @@ int main(int argc, char* argv[]){
     if (fd_bgs == -1)
         errExit("shm_open boardGameState in player. Soy del player");
 
-    shm_bgs = mmap(NULL, BOARD_GAME_STATE_SIZE, PROT_READ, MAP_SHARED, fd_bgs, 0);
+    shm_bgs = mmap(NULL, boardGameStateSize, PROT_READ, MAP_SHARED, fd_bgs, 0);
     if (shm_bgs == MAP_FAILED)
         errExit("mmap boardGameState in player");
 
@@ -51,15 +44,25 @@ int main(int argc, char* argv[]){
     if (shm_ss == MAP_FAILED)
         errExit("mmap syncState in player");
 
-    //loadPlayer1(shm_bgs);
-    int playerID = 0; // Cambiar si el jugador no es el 0
+    pid_t my_pid = getpid();
+    int playerID = -1;
+    for (int i = 0; i < shm_bgs->playerAmount; i++) {
+        if (shm_bgs->players[i].processID == my_pid) {
+            playerID = i;
+            break;
+        }
+    }
+
+    if (playerID == -1)
+        errExit("No se pudo determinar el playerID (getpid no encontrado)");
+
+    bool blocked;
 
     //LIGHTSWITCH! 
     while(1){
-    // Espera a que el máster le dé permiso de actuar
-    if (sem_wait(&shm_ss->playerSem[playerID]) == -1)
-        errExit("sem_wait playerSem");
-
+    // Espera a que el master le de permiso para actuar
+        if (sem_wait(&shm_ss->playerSem[playerID]) == -1)
+            errExit("sem_wait playerSem");
 
         if (sem_wait(&shm_ss->writer) == -1)
             errExit("sem_wait writer");
@@ -74,9 +77,11 @@ int main(int argc, char* argv[]){
             errExit("sem_post readersCountMutex");
 
         //TO DO: CONSULTAR ESTADO
-        //Si termino, exitear
+        //Consulto el estado a ver si el jugador esta bloqueado
+        //Recuerdo que solamente leo y luego ejecuto, porque se deben liberar los semaforos mas adelante
+        //Si rompo aca, no los libero y dejo el mutex bloqueado
         if (shm_bgs->players[playerID].isBlocked)
-            break;
+            blocked = shm_bgs->players[playerID].isBlocked;
 
         if (sem_wait(&shm_ss->readersCountMutex) == -1)
             errExit("sem_wait readersCountMutex");
@@ -85,13 +90,23 @@ int main(int argc, char* argv[]){
                 errExit("sem_post mutex");
         if (sem_post(&shm_ss->readersCountMutex) == -1)
             errExit("sem_post readersCountMutex");  
-            
+        
+        if (blocked){
+            break;
+        }
+
         //TO DO: DECIDIR SIGUIENTE MOVIMIENTO
         unsigned char nextMov = movAnalysis();
-        //printf("%c", nextMov);
+        
+        //fprintf(stderr, "Movimiento elegido (c): %c\n", nextMov);
+        //fprintf(stderr, "Movimiento elegido (d): %d\n", nextMov);
+
         //TO DO: ENVIAR MOVIMIENTO
         if (write(1, &nextMov, 1) == -1)
             errExit("write player");
     }
+    
+    munmap(shm_bgs, boardGameStateSize);
+    munmap(shm_ss, SYNC_STATE_SIZE);
     exit(EXIT_SUCCESS);
 }
