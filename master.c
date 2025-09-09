@@ -51,7 +51,7 @@ int main(int argc, char *argv[]){
                 seed = (unsigned int)atoi(optarg);
                 break;
             case 'v':
-                view_path = strdup(optarg);  // strdup reserva memoria. <- No tengo ni idea que es esto, averiguar
+                view_path = strdup(optarg);  // strdup reserva memoria. <- No tengo ni idea que es esto, averiguar TO-DO
                 break;
             case 'p':
                 // Aquí recogemos manualmente los binarios de jugadores

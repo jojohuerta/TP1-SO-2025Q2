@@ -4,6 +4,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include "include/shmConstants.h"
+#include "include/view.h"
 
 void draw(boardGameState* bgs);
 
@@ -96,8 +97,25 @@ void draw(boardGameState* bgs){
             printf("|");
             int val = bgs->boardStart[(y * bgs->boardWidth) + x];
             if (val == 0) {
-                printf("\033[1;31m%d\033[0m", val);
-            } else {
+                printf("\033[1;%dm%d\033[0m", PLY1_RED, 1);
+            } else if (val == -1) {
+                printf("\033[1;%dm%d\033[0m", PLY2_BLUE, 2);
+            } else if (val == -2) {
+                printf("\033[1;%dm%d\033[0m", PLY3_GREEN, 3);
+            } else if (val == -3) {
+                printf("\033[1;%dm%d\033[0m", PLY4_YELLOW, 4);
+            } else if (val == -4) {
+                printf("\033[1;%dm%d\033[0m", PLY5_ORANGE, 5);
+            } else if (val == -5) {
+                printf("\033[1;%dm%d\033[0m", PLY6_PURPLE, 6);
+            } else if (val == -6) {
+                printf("\033[1;%dm%d\033[0m", PLY7_CYAN, 7);
+            } else if (val == -7) {
+                printf("\033[1;%dm%d\033[0m", PLY8_MAGENTA, 8);
+            } else if (val == -8) {
+                printf("\033[1;%dm%d\033[0m", PLY9_BLACK, 9);
+            }
+            else {
                 printf("%d", val);
             }
         }
