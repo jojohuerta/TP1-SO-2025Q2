@@ -220,7 +220,7 @@ int main(int argc, char *argv[]){
     initializeAllPlayers(shm_bgs, player_count, playerPids);    //TODO: revisar
 
     fd_set readfds;     //TODO: huh?
-    int maxfd = -1;     // TODO: huh?
+    //int maxfd = -1;     // TODO: huh? unused!!
 
     // --- Game Start --- //
 
