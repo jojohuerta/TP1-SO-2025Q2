@@ -8,64 +8,119 @@
 #include <sys/select.h>
 #include <unistd.h>
 #include <time.h>
+
+#include <errno.h>
+#include <limits.h>
+
 #include "include/shmConstants.h"
 #include "include/shareMemory.h"
 #include "include/utilities.h"
 
+//Defaults
+#define DEF_WIDTH 10
+#define DEF_HEIGHT 10
+#define DEF_DELAY_MS 200
+#define DEF_TIMEOUT_S 10
+#define DEF_SEED (int)time(NULL)
+#define DEF_VIEW_PATH ""
+
+//Limits
+#define MIN_WIDTH DEF_WIDTH
+#define MIN_HEIGHT DEF_HEIGHT
+#define MIN_PLAYERS 1
 #define MAX_PLAYERS 9
+
 extern char **environ;
 extern int optind;
 extern char *optarg;
 
 int main(int argc, char *argv[]){
-    //Trata de parametros
-    int width = 10;
-    int height = 10;
-    int delay = 200;
-    int timeout = 10;
-    unsigned int seed = (unsigned int)time(NULL);
+
+    //Parameter validation
+    int width = DEF_WIDTH;
+    int height = DEF_HEIGHT;
+    int delay = DEF_DELAY_MS;
+    int timeout = DEF_TIMEOUT_S;
+    int seed = DEF_SEED;
+    //char view_path[PATH_MAX] = "";
     char *view_path = NULL;
-    char *players[9];
+    char *players[MAX_PLAYERS];
     int player_count = 0;
 
-     int opt;
+    char *end;
+    errno = 0;
+    int opt;
     while ((opt = getopt(argc, argv, "w:h:d:t:s:v:p")) != -1) {
         switch (opt) {
             case 'w':
-                width = atoi(optarg);
-                if (width < 10)
-                    errExit("Error: Dimensiones minimas del tablero: 10x10");
+                width = strtol(optarg, &end, 10);
+                if (width < MIN_WIDTH || errno != 0 || *end != '\0'){
+                    char msg[STR_ERR_LENGTH];
+                    sprintf(msg, "Illegal param: width must a number, at least %d", MIN_WIDTH);
+                    errExit(msg);
+                }
                 break;
             case 'h':
-                height = atoi(optarg);
-                if (height < 10)
-                    errExit("Error: Dimensiones minimas del tablero: 10x10");
+                height = strtol(optarg, &end, 10);
+                if (height < MIN_HEIGHT || errno !=0 || *end != '\0'){
+                    char msg[STR_ERR_LENGTH];
+                    sprintf(msg, "Illegal param: height must a number, at least %d", MIN_HEIGHT);
+                    errExit(msg);
+                }
                 break;
             case 'd':
-                delay = atoi(optarg);
+                delay = strtol(optarg, &end, 10);
+                if(errno != 0) {
+                    char msg[STR_ERR_LENGTH];
+                    sprintf(msg, "Illegal param: delay must be a number");
+                    errExit(msg);
+                }
                 break;
             case 't':
-                timeout = atoi(optarg);
+                timeout = strtol(optarg, &end, 10);
+                if(errno != 0) {
+                    char msg[STR_ERR_LENGTH];
+                    sprintf(msg, "Illegal param: timeout must be a number");
+                    errExit(msg);
+                }
                 break;
             case 's':
-                seed = (unsigned int)atoi(optarg);
+                seed = strtol(optarg, &end, 10);
+                if(errno != 0) {
+                    char msg[STR_ERR_LENGTH];
+                    sprintf(msg, "Illegal param: seed must be a number");
+                    errExit(msg);
+                }
                 break;
             case 'v':
-                view_path = strdup(optarg);  // strdup reserva memoria. <- No tengo ni idea que es esto, averiguar TO-DO
+                view_path = strdup(optarg);
+                //sprintf(view_path, "%s", optarg);              //strdup duplica el string apuntado por el parametro y retorna un puntero a ese nuevo string. Asigna memoria, debe liberarse con free (TODO). Cambié por sprintf para no usar memoria al cuete
+                if(view_path == NULL || view_path == "") {
+                    char msg[STR_ERR_LENGTH];
+                    sprintf(msg, "Illegal param: view path is empty or does not exist");
+                    errExit(msg);
+                }
                 break;
             case 'p':
                 // Aquí recogemos manualmente los binarios de jugadores
                 while (optind < argc && argv[optind][0] != '-') {
-                    if (player_count >= 9)
-                        errExit("No se pueden especificar mas de 9 jugadores usando -p");
-                    players[player_count++] = strdup(argv[optind++]);
+                    if (player_count >= MAX_PLAYERS) {
+                        char msg[STR_ERR_LENGTH];
+                        sprintf(msg, "Illegal param: a maximum of %d players is supported", MAX_PLAYERS);
+                        errExit(msg);
+                    }
+                    players[player_count++] = strdup(argv[optind++]);       //TODO: free de estos paths
                 }
-                if (player_count < 1) 
-                    errExit("Al menos un jugador debe ser especificado usando -p");
+                if (player_count < MIN_PLAYERS) {
+                    char msg[STR_ERR_LENGTH];
+                    sprintf(msg, "Illegal param: a minimum of %d player paths must be specified", MIN_PLAYERS);
+                    errExit(msg);
+                }
                 break;
             default:
-                fprintf(stderr, "Argumentos incorrectos. Uso: %s [-w width] [-h height] [-d delay] [-t timeout] [-s seed] [-v view] -p player1 [player2 ...]\n", argv[0]);
-                exit(EXIT_FAILURE);
+                char msg[STR_ERR_LENGTH];
+                sprintf(msg, "Illegal params. Usage: %s [-w width] [-h height] [-d delay] [-t timeout] [-s seed] [-v view] -p player1 [player2 ...]", argv[0]);
+                errExit(msg);
         }
     }
 

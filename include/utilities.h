@@ -3,6 +3,13 @@
 
 #include "shmConstants.h"
 
+#define STR_ERR_LENGTH 1024
+#define errExit(msg) \
+    do {                            \
+    fprintf(stderr, "%s\n", msg);   \
+    exit(EXIT_FAILURE);             \
+    } while(0);                     //TODO: no entiendo por qué tiene que tener el do-while, pero no funciona sin él
+
 int interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player);
 void initializeAllPlayers(boardGameState *shm_bgs, int playerCount, pid_t * playerPids);
 void initRandom();

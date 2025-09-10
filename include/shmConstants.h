@@ -6,8 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \
-                        } while (0)
+
 
 #define GAME_STATE_PATH "/game_state"
 
