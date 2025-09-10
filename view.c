@@ -6,6 +6,8 @@
 #include "include/shmConstants.h"
 #include "include/view.h"
 
+#include "include/utilities.h"
+
 void draw(boardGameState* bgs);
 
 //TODO: SHM OPEN Y UNLINK PERO... Y LOS FILE DESCRIPTORS?

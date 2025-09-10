@@ -10,7 +10,7 @@
 #include <time.h>
 
 #include <errno.h>
-#include <limits.h>
+//#include <limits.h>
 
 #include "include/shmConstants.h"
 #include "include/shareMemory.h"
@@ -22,7 +22,7 @@
 #define DEF_DELAY_MS 200
 #define DEF_TIMEOUT_S 10
 #define DEF_SEED (int)time(NULL)
-#define DEF_VIEW_PATH ""
+//#define DEF_VIEW_PATH ""
 
 //Limits
 #define MIN_WIDTH DEF_WIDTH
@@ -56,7 +56,7 @@ int main(int argc, char *argv[]){
                 width = strtol(optarg, &end, 10);
                 if (width < MIN_WIDTH || errno != 0 || *end != '\0'){
                     char msg[STR_ERR_LENGTH];
-                    sprintf(msg, "Illegal param: width must a number, at least %d", MIN_WIDTH);
+                    sprintf(msg, "Illegal param: width must be a number, at least %d", MIN_WIDTH);
                     errExit(msg);
                 }
                 break;
@@ -64,13 +64,13 @@ int main(int argc, char *argv[]){
                 height = strtol(optarg, &end, 10);
                 if (height < MIN_HEIGHT || errno !=0 || *end != '\0'){
                     char msg[STR_ERR_LENGTH];
-                    sprintf(msg, "Illegal param: height must a number, at least %d", MIN_HEIGHT);
+                    sprintf(msg, "Illegal param: height must be a number, at least %d", MIN_HEIGHT);
                     errExit(msg);
                 }
                 break;
             case 'd':
                 delay = strtol(optarg, &end, 10);
-                if(errno != 0) {
+                if(errno != 0 || *end != '\0') {
                     char msg[STR_ERR_LENGTH];
                     sprintf(msg, "Illegal param: delay must be a number");
                     errExit(msg);
@@ -78,15 +78,15 @@ int main(int argc, char *argv[]){
                 break;
             case 't':
                 timeout = strtol(optarg, &end, 10);
-                if(errno != 0) {
+                if(errno != 0 || *end != '\0') {
                     char msg[STR_ERR_LENGTH];
                     sprintf(msg, "Illegal param: timeout must be a number");
                     errExit(msg);
                 }
                 break;
             case 's':
-                seed = strtol(optarg, &end, 10);
-                if(errno != 0) {
+                seed = strtol(optarg, &end, 10 || *end != '\0');
+                if(errno != 0 || *end != '\0') {
                     char msg[STR_ERR_LENGTH];
                     sprintf(msg, "Illegal param: seed must be a number");
                     errExit(msg);
@@ -102,6 +102,7 @@ int main(int argc, char *argv[]){
                 }
                 break;
             case 'p':
+
                 // Aquí recogemos manualmente los binarios de jugadores
                 while (optind < argc && argv[optind][0] != '-') {
                     if (player_count >= MAX_PLAYERS) {
@@ -122,6 +123,12 @@ int main(int argc, char *argv[]){
                 sprintf(msg, "Illegal params. Usage: %s [-w width] [-h height] [-d delay] [-t timeout] [-s seed] [-v view] -p player1 [player2 ...]", argv[0]);
                 errExit(msg);
         }
+    }
+    //Player check. -p option is mandatory but if no options were specified, the previous cycle is skipped.
+    if (player_count < MIN_PLAYERS) {
+        char msg[STR_ERR_LENGTH];
+        sprintf(msg, "Illegal param: a minimum of %d player paths must be specified with option '-d'", MIN_PLAYERS);
+        errExit(msg);
     }
 
     //Memorias
