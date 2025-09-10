@@ -93,21 +93,25 @@ int main(int argc, char *argv[]){
                 }
                 break;
             case 'v':
-                view_path = strdup(optarg);
                 //sprintf(view_path, "%s", optarg);              //strdup duplica el string apuntado por el parametro y retorna un puntero a ese nuevo string. Asigna memoria, debe liberarse con free (TODO). Cambié por sprintf para no usar memoria al cuete
-                if(view_path == NULL || view_path == "") {
+                if(access(optarg, X_OK)) {
                     char msg[STR_ERR_LENGTH];
-                    sprintf(msg, "Illegal param: view path is empty or does not exist");
+                    sprintf(msg, "Illegal param: view path %s does not exist or you lack necessary permissions", optarg);
                     errExit(msg);
                 }
+                view_path = strdup(optarg);
                 break;
             case 'p':
-
                 // Aquí recogemos manualmente los binarios de jugadores
                 while (optind < argc && argv[optind][0] != '-') {
                     if (player_count >= MAX_PLAYERS) {
                         char msg[STR_ERR_LENGTH];
                         sprintf(msg, "Illegal param: a maximum of %d players is supported", MAX_PLAYERS);
+                        errExit(msg);
+                    }
+                    if(access(argv[optind], X_OK)) {
+                        char msg[STR_ERR_LENGTH];
+                        sprintf(msg, "Illegal param: player path %s does not exist or you lack necessary permissions", argv[optind]);
                         errExit(msg);
                     }
                     players[player_count++] = strdup(argv[optind++]);       //TODO: free de estos paths
