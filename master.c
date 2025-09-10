@@ -127,7 +127,7 @@ int main(int argc, char *argv[]){
     //Player check. -p option is mandatory but if no options were specified, the previous cycle is skipped.
     if (player_count < MIN_PLAYERS) {
         char msg[STR_ERR_LENGTH];
-        sprintf(msg, "Illegal param: a minimum of %d player paths must be specified with option '-d'", MIN_PLAYERS);
+        sprintf(msg, "Illegal param: a minimum of %d player paths must be specified with option '-p'", MIN_PLAYERS);
         errExit(msg);
     }
 
