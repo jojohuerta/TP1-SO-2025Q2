@@ -9,9 +9,6 @@
 #include <unistd.h>
 #include <time.h>
 
-#include <errno.h>
-//#include <limits.h>
-
 #include "include/shmConstants.h"
 #include "include/shareMemory.h"
 #include "include/utilities.h"
@@ -22,7 +19,7 @@
 #define DEF_DELAY_MS 200
 #define DEF_TIMEOUT_S 10
 #define DEF_SEED (int)time(NULL)
-//#define DEF_VIEW_PATH ""
+#define DEF_VIEW_PATH ""
 
 //Limits
 #define MIN_WIDTH DEF_WIDTH
@@ -36,15 +33,14 @@ extern char *optarg;
 
 int main(int argc, char *argv[]){
 
-    //Parameter validation
+    // --- Parameter validation --- //
     int width = DEF_WIDTH;
     int height = DEF_HEIGHT;
     int delay = DEF_DELAY_MS;
     int timeout = DEF_TIMEOUT_S;
     int seed = DEF_SEED;
-    //char view_path[PATH_MAX] = "";
-    char *view_path = NULL;
-    char *players[MAX_PLAYERS];
+    char view_path[PATH_MAX] = DEF_VIEW_PATH;
+    char players[MAX_PLAYERS][PATH_MAX];
     int player_count = 0;
 
     char *end;
@@ -93,13 +89,12 @@ int main(int argc, char *argv[]){
                 }
                 break;
             case 'v':
-                //sprintf(view_path, "%s", optarg);              //strdup duplica el string apuntado por el parametro y retorna un puntero a ese nuevo string. Asigna memoria, debe liberarse con free (TODO). Cambié por sprintf para no usar memoria al cuete
                 if(access(optarg, X_OK)) {
                     char msg[STR_ERR_LENGTH];
                     sprintf(msg, "Illegal param: view path %s does not exist or you lack necessary permissions", optarg);
                     errExit(msg);
                 }
-                view_path = strdup(optarg);
+                sprintf(view_path, "%s", optarg);
                 break;
             case 'p':
                 // Aquí recogemos manualmente los binarios de jugadores
@@ -114,7 +109,7 @@ int main(int argc, char *argv[]){
                         sprintf(msg, "Illegal param: player path %s does not exist or you lack necessary permissions", argv[optind]);
                         errExit(msg);
                     }
-                    players[player_count++] = strdup(argv[optind++]);       //TODO: free de estos paths
+                    sprintf(players[player_count++], "%s", argv[optind++]);
                 }
                 if (player_count < MIN_PLAYERS) {
                     char msg[STR_ERR_LENGTH];
@@ -135,100 +130,111 @@ int main(int argc, char *argv[]){
         errExit(msg);
     }
 
-    //Memorias
+    // --- Shared memory init --- //
+    //Memorias TODO: revisar
     boardGameState * shm_bgs;
     syncState * shm_ss;
 
     shm_bgs = createShmBoardGameState(width, height, player_count, seed);
     shm_ss = createShmSyncState();
 
-    //INICIALIZACION DEL PROCESO VIEW
+    // --- View process init --- //
     int viewStatus;
     pid_t viewPid;
-    if (view_path != NULL){    
-    viewPid = fork();
-    if (viewPid == -1)
-        errExit("fork view");
+    if (strcmp(view_path, "")){
 
-    //EXECVE PARA EL VIEW
-    char heightStr[16]; 
-    char widthStr[16]; 
-    snprintf(widthStr, sizeof(widthStr), "%d", width);
-    snprintf(heightStr, sizeof(heightStr), "%d", height);
-    
-    //char * viewPath = "./view"; 
-   char * viewArgs[] = {view_path, widthStr, heightStr, NULL};
+        // - View process creation - //
+        viewPid = fork();
+        if (viewPid == -1)
+            errExit("Uncaught error: failed to create view process");
 
-    if(viewPid == 0){   //Si el PID = 0 es el hijo
-        if(execve(view_path, viewArgs, environ) == -1)
-            errExit("execve view");
-    }
+        // - View process execution - //
+        char heightStr[MAX_ITOA_LENGTH], widthStr[MAX_ITOA_LENGTH]; 
+        snprintf(widthStr, sizeof(widthStr), "%d", width);
+        snprintf(heightStr, sizeof(heightStr), "%d", height);
+
+        char * viewArgs[] = {view_path, widthStr, heightStr, NULL};
+
+        if(viewPid == 0){
+            if(execve(view_path, viewArgs, environ) == -1)
+                errExit("Uncaught error: failed to execute view binary");
+        }
     }
     
-    //INICIALIZACION DE UN PROCESO PLAYER Y CREACION DEL PIPE
-    int pipefd[MAX_PLAYERS][2];  //[0] es lectura y [1] es escritura
+    // --- Player processes init --- //
+    int pipefd[MAX_PLAYERS][2];
     pid_t playerPids[MAX_PLAYERS];
     int playerFds[MAX_PLAYERS];  
 
     for (int i = 0; i < player_count; i++) {
-        if (pipe(pipefd[i]) == -1)
-            errExit("pipe creation");
 
-        //Creacion del proceso
+        // - Master-player pipes creation - //
+        if (pipe(pipefd[i]) == -1)
+            errExit("Uncaught error: failed to create pipe for master-player communication");
+
+        // - Player processeses creation - //
         pid_t pid = fork();
         if (pid == -1)
-            errExit("fork player");
+            errExit("Uncaught error: failed to create player process");
 
-        if(pid == 0){//Si el PID = 0 es el hijo
-            //Cerrado del extremo de lectura del pipe
+        // - Master-player pipes setup - //
+        if(pid == 0){
+            // - Player (child) - //
+
+            //Close read end
             close(pipefd[i][0]); 
             
-            //Cerrado del STDOUT
+            //Close STDOUT
             close(1);  
 
-            //Duplicado del file descriptor al mas chico, o sea, 1 (STDOUT)
-            //Ahora el extremo del pipe es el STDOUT
+            //Dupe write end to smallest fd (1), now STDOUT is the pipe's write end
             if(dup(pipefd[i][1]) == -1)
-                errExit("dup player");
+                errExit("Uncaught error: failed to set pipe write end to STDOUT");
 
-            // Cerramos el original porque ya lo tenemos duplicado (en FD 1)
+            //Close old write end
             close(pipefd[i][1]);
 
-            char widthStr[16], heightStr[16];
+            // - Player processes execution - //
+            char widthStr[MAX_ITOA_LENGTH], heightStr[MAX_ITOA_LENGTH];
             snprintf(widthStr, sizeof(widthStr), "%d", width);
             snprintf(heightStr, sizeof(heightStr), "%d", height);
 
             char *playerArgs[] = {players[i], widthStr, heightStr, NULL};
 
-            // Launch the actual player binary
             if (execve(players[i], playerArgs, environ) == -1)
-                errExit("execve player");
+                errExit("Uncaught error: failed to execute player binary");
 
-        } else {  // Proceso master
+        } else {
+            // - Master (parent) - //
 
-            //Cerramos el extremo de escritura y asignamos
+            //Close write end
             close(pipefd[i][1]);
 
+            //Save pipes' read ends and players' pids for later use
             playerFds[i] = pipefd[i][0];
             playerPids[i] = pid;
         }
     }
 
-    //Loading of players
-    initializeAllPlayers(shm_bgs, player_count, playerPids);
+    // --- Player distribution --- //
+    initializeAllPlayers(shm_bgs, player_count, playerPids);    //TODO: revisar
 
-    fd_set readfds;
-    int maxfd = -1;
+    fd_set readfds;     //TODO: huh?
+    int maxfd = -1;     // TODO: huh?
 
-    if (view_path != NULL) {
+    // --- Game Start --- //
+
+    // - Master-view sync - //
+    if (strcmp(view_path, "")) {
         if (sem_post(&shm_ss->A) == -1)
-            errExit("sem_post A inicial");
+            errExit("Uncaught error: failed to post to semaphore A");   //TODO: nombre semaforos
 
         if (sem_wait(&shm_ss->B) == -1)
-            errExit("sem_wait B inicial");
+            errExit("Uncaught error: failed to wait for semaphore B");   //TODO: nombre semaforos
     }
 
-    // Para round robin 
+    // --- Round Robin scheduling among players --- //
+    // Para round robin TODO: no deberia ser SCHED_RR?
     int turn = 0;
     int currentPlayerIndex = 0;
     time_t lastValidMov = time(NULL);
@@ -254,7 +260,7 @@ int main(int argc, char *argv[]){
 
         //Nos encargamos de el player que le corresponde el turno
         if (sem_post(&shm_ss->playerSem[currentPlayerIndex]) == -1) {
-            errExit("sem_post player_turn");
+            errExit("Uncaught error: failed to post to player semaphore");      //TODO: nombre semaforos
         }
 
         //Esperar al jugador a que de su respuesta (al que le corresponde el turno)
@@ -283,12 +289,12 @@ int main(int argc, char *argv[]){
 
                 // Lock para modificar el estado compartido. Zona critica
                 if (sem_wait(&shm_ss->mutex) == -1)
-                    errExit("sem_wait mutex");
+                    errExit("Uncaught error: failed to wait for mutex semaphore");      //TODO: nombre semaforos
 
                 if (sem_wait(&shm_ss->writer) == -1)
-                    errExit("sem_wait writer");
+                    errExit("Uncaught error: failed to wait for writer semaphore");     //TODO: nombre semaforos
                 if (sem_post(&shm_ss->writer) == -1)
-                    errExit("sem_post writer");
+                    errExit("Uncaught error: failed to post to writer semaphore");      //TODO: nombre semaforos
 
                 // Validar y ejecutar movimiento
                 int movWasValid = interpretMovement(mov, shm_bgs, currentPlayerIndex);
@@ -296,28 +302,34 @@ int main(int argc, char *argv[]){
                     lastValidMov = time(NULL);
                 }
                 if (sem_post(&shm_ss->mutex) == -1)
-                    errExit("sem_post mutex");
+                    errExit("Uncaught error: failed to post to mutex semaphore");       //TODO: nombre semaforos
             }
         } else if (readyAmountOfFD == 0) {
         // No se recibió movimiento dentro del timeout de select.
         // El máster simplemente continúa con el siguiente jugador.
         } else {
-            errExit("select");
+            errExit("Uncaught error: failed to select a player's file descriptor");
         }
 
+        // --- Print and delay --- //
+
+        // - Print, notify view process and wait - //
         //DIBUJARMOS
-        if (view_path != NULL) {
+        if (strcmp(view_path, "")) {
             //Se avisa a la vista que puede imprimir
             if (sem_post(&shm_ss->A) == -1)
-                errExit("sem_post A");
+                errExit("Uncaught error: failed to post to semaphore A");               //TODO: nombre semaforos
 
             //Esperamos a la vista a que termine de imprimr
             if (sem_wait(&shm_ss->B) == -1)
-                errExit("sem_wait B");
+                errExit("Uncaught error: failed to wait for semaphore B");              //TODO: nombre semaforos
         }
 
+        // - Delay - //
         //usleep esta en microsegundos
-        usleep(delay * 1000);  
+        usleep(delay * 1000);           //TODO: magic number?
+
+
 
         //Avanzamos con el Round-Robin. Salteamos a los que estan bloqueados
         currentPlayerIndex = (currentPlayerIndex + 1) % player_count;
@@ -331,28 +343,32 @@ int main(int argc, char *argv[]){
         }
     }
 
+    // --- Game over --- //
+
     shm_bgs->isGameOver = 1;
 
-    if (view_path != NULL){
+    // - Print end state - //
+    if (strcmp(view_path, "")){
     //Cuando termina el juego se le manda a la vista por ultima vez que imprima
     if (sem_post(&shm_ss->A) == -1)
-        errExit("sem_post A final");
-
+        errExit("Uncaught error: failed to post to semaphore A");        //TODO: nombre semaforos
     //Esperamos a que la vista imprima la ultima pantalla
     if (sem_wait(&shm_ss->B) == -1)
-        errExit("sem_wait B final");
+        errExit("Uncaught error: failed to wait for semaphore B");        //TODO: nombre semaforos
 
+    // - Terminate everyone - //
     //ESPERAMOS AL HIJO VIEW
-    if (view_path != NULL){
+    if (strcmp(view_path, "")){
         if(waitpid(viewPid, &viewStatus, 0) == -1)
-            errExit("view waitpid");
+            errExit("Uncaught error: failed to terminate player");
     }
     }
     
-    
+    // - Shared memory close - //
     closeShmBoardGameState(shm_bgs);
     closeShmSyncState(shm_ss);
 
+    // - Pipes' ends close - //
     for (int i = 0; i < player_count; i++) {
     close(pipefd[i][0]); // cierre del lado de lectura
     // También podés cerrar el de escritura si no lo cerraste ya:
