@@ -63,14 +63,14 @@ int main(int argc, char* argv[]){
     printf("\033[0m"); 
     printf("PLAYER  POINTS  INVALID-MOVES  VALID-MOVEMENTS BLOCKED X   Y\n");
     for(int i=0; i<shm_bgs->playerAmount; i++){
-    printf("%-7s %-12d %-15d %-11d %-5d %-3d %-3d\n", shm_bgs->players[i].playerName, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests,
-            shm_bgs->players[i].validMovementRequests, shm_bgs->players[i].isBlocked, shm_bgs->players[i].x, shm_bgs->players[i].y
-        );    }
+    printf("%-8s %-12d %-15d %-11d %-4d %-3d %-3d\n", shm_bgs->players[i].playerName, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests,
+            shm_bgs->players[i].validMovementRequests, shm_bgs->players[i].isBlocked, shm_bgs->players[i].x, shm_bgs->players[i].y);
+        }
     printf("\n");
 
     whoWon(shm_bgs);
 
-    //Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen TO-DO mentira, no se diubja la ultima
+    //Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen
     if (sem_post(&shm_ss->B) == -1)
         errExit("sem_post B final");
 
@@ -112,7 +112,6 @@ void draw(boardGameState* bgs){
                 } else {
                     printf("\033[%dm%d\033[0m", color, idx+1);
                 }
-
             } else {
                 printf("%d", val);
             }
@@ -135,7 +134,6 @@ void whoWon(boardGameState* shm_bgs){
         }
     }
 
-    // Juntar a los que tienen ese score
     int topScorers[numPlayers];
     int topCount = 0;
     for (int i = 0; i < numPlayers; i++) {
@@ -180,7 +178,6 @@ void whoWon(boardGameState* shm_bgs){
             printf(". Todos con %d puntos y %d movimientos inválidos.\n", bestScore, bestInvalids);
         }
     } else {
-        //Solo un jugador con el mejor score
         int idx = topScorers[0];
         printf("🏆 El \033[4;32mganador\033[0m es el Jugador %d con %d puntos y %d movimientos inválidos.\n",
             idx + 1, shm_bgs->players[idx].score, shm_bgs->players[idx].invalidMovementRequests);
