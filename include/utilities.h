@@ -12,7 +12,7 @@
 #define STR_ERR_LENGTH 1024
 #define errExit(msg) \
     do {                            \
-    fprintf(stderr, "%s\n%s\n", msg, strerror(errno));   \
+    fprintf(stderr, "%s\n%s\n", msg, errno == 0 ? "" : strerror(errno));   \
     exit(EXIT_FAILURE);             \
     } while(0);                     //TODO: no entiendo por qué tiene que tener el do-while, pero no funciona sin él <- Standard Macro Practice for safe usage
 
