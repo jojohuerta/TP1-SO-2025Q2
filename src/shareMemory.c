@@ -19,7 +19,7 @@ boardGameState * createShmBoardGameState(int boardWidth, int boardHeight, int pl
     srand(seed); 
 
     // - Create game state shm - //
-    shm_fd = shm_open(shm_path, O_CREAT | O_EXCL | O_RDWR, S_IRWXU);
+    shm_fd = shm_open(shm_path, O_CREAT | O_TRUNC | O_RDWR, S_IRWXU);
     if (shm_fd == -1)
         errExit("Uncaught error: failed to create game state shared memory");
 
@@ -71,7 +71,7 @@ syncState* createShmSyncState(){
     syncState * shm_addr;
 
     // - Create sync state shm - //
-    shm_fd = shm_open(shm_path, O_CREAT | O_EXCL | O_RDWR, S_IRWXU);
+    shm_fd = shm_open(shm_path, O_CREAT | O_TRUNC | O_RDWR, S_IRWXU);
     if (shm_fd == -1)
         errExit("Uncaught error: failed to create sync state shared memory");
 
