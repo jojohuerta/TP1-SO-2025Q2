@@ -63,20 +63,20 @@ int main(int argc, char* argv[]){
     //Lightswitch
     while(1){
     // Espera a que el master le de permiso para actuar
-        if (sem_wait(&shm_ss->playerSem[playerID]) == -1)
-            errExit("sem_wait playerSem");
+        if (sem_wait(&shm_ss->player_can_move_sem[playerID]) == -1)
+            errExit("Uncaught error: failed to wait for player can move semaphore");
 
-        if (sem_wait(&shm_ss->writer) == -1)
-            errExit("sem_wait writer");
-        if (sem_post(&shm_ss->writer) == -1)
-            errExit("sem_post writer");
-        if (sem_wait(&shm_ss->readersCountMutex) == -1)
-            errExit("sem_wait readersCountMutex");
-        if (shm_ss->readersCount++ == 0)
-            if (sem_wait(&shm_ss->mutex) == -1)
-                errExit("sem_wait mutex");
-        if (sem_post(&shm_ss->readersCountMutex) == -1) 
-            errExit("sem_post readersCountMutex");
+        if (sem_wait(&shm_ss->game_state_starvation_mutex) == -1)
+            errExit("Uncaught error: failed to wait for game state starvation semaphore");
+        if (sem_post(&shm_ss->game_state_starvation_mutex) == -1)
+            errExit("Uncaught error: failed to post to game state starvation semaphore");
+        if (sem_wait(&shm_ss->reader_count_mutex) == -1)
+            errExit("Uncaught error: failed to wait for readers count semaphore");
+        if (shm_ss->reader_count++ == 0)
+            if (sem_wait(&shm_ss->game_state_mutex) == -1)
+                errExit("Uncaught error: failed to wait for game state semaphore");
+        if (sem_post(&shm_ss->reader_count_mutex) == -1) 
+            errExit("Uncaught error: failed to post to readers count semaphore");
 
         //Consulta de estado
         memcpy(localBoardState, shm_bgs->boardStart, sizeof(int) * width * height);
@@ -91,13 +91,13 @@ int main(int argc, char* argv[]){
         if (shm_bgs->players[playerID].isBlocked)
             blocked = shm_bgs->players[playerID].isBlocked;
 
-        if (sem_wait(&shm_ss->readersCountMutex) == -1)
-            errExit("sem_wait readersCountMutex");
-        if (shm_ss->readersCount-- == 1)
-            if (sem_post(&shm_ss->mutex) == -1)
-                errExit("sem_post mutex");
-        if (sem_post(&shm_ss->readersCountMutex) == -1)
-            errExit("sem_post readersCountMutex");  
+        if (sem_wait(&shm_ss->reader_count_mutex) == -1)
+            errExit("Uncaught error: failed to wait for readers count semaphore");
+        if (shm_ss->reader_count-- == 1)
+            if (sem_post(&shm_ss->game_state_mutex) == -1)
+                errExit("Uncaught error: failed to post to game state semaphore");
+        if (sem_post(&shm_ss->reader_count_mutex) == -1)
+            errExit("Uncaught error: failed to post to readers count semaphore");  
         
         if (blocked){
             break;

@@ -80,16 +80,16 @@ syncState* createShmSyncState(){
         errExit("mmap");
     
     //Inicializacion
-    if (sem_init(&shmp->A, 1, 0) == -1) errExit("sem_init A");
-    if (sem_init(&shmp->B, 1, 0) == -1) errExit("sem_init B");
-    if (sem_init(&shmp->writer, 1, 1) == -1) errExit("sem_init writer");
-    if (sem_init(&shmp->mutex, 1, 1) == -1) errExit("sem_init mutex");
-    if (sem_init(&shmp->readersCountMutex, 1, 1) == -1) errExit("sem_init readersCountMutex");
-    shmp->readersCount = 0;
+    if (sem_init(&shmp->view_print_pending_sem, 1, 0) == -1) errExit("Uncaught error: failed to initialize print pending semaphore");
+    if (sem_init(&shmp->view_print_done_sem, 1, 0) == -1) errExit("Uncaught error: failed to initialize print done semaphore");
+    if (sem_init(&shmp->game_state_starvation_mutex, 1, 1) == -1) errExit("Uncaught error: failed to initialize game state starvation semaphore");
+    if (sem_init(&shmp->game_state_mutex, 1, 1) == -1) errExit("Uncaught error: failed to initialize game state semaphore");
+    if (sem_init(&shmp->reader_count_mutex, 1, 1) == -1) errExit("Uncaught error: failed to initialize readers count semaphore");
+    shmp->reader_count = 0;
     
    for (int i = 0; i < 9; i++) {
-        if (sem_init(&shmp->playerSem[i], 1, 0) == -1)
-            errExit("sem_init playerSem[i]");
+        if (sem_init(&shmp->player_can_move_sem[i], 1, 0) == -1)
+            errExit("Uncaught error: failed to initialize player can move semaphores");
     }
 
     return shmp;

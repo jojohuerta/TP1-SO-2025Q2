@@ -43,8 +43,8 @@ int main(int argc, char* argv[]){
 
     while (1){
         //Hay que esperar a que se pueda 
-        if (sem_wait(&shm_ss->A) == -1)
-            errExit("sem_wait A");
+        if (sem_wait(&shm_ss->view_print_pending_sem) == -1)
+            errExit("Uncaught error: failed to wait for print pending semaphore");
 
         if (shm_bgs->isGameOver)
             break;
@@ -58,8 +58,8 @@ int main(int argc, char* argv[]){
         draw(shm_bgs);
 
         //Se avisa al master que ya se dibujo
-        if (sem_post(&shm_ss->B) == -1)
-            errExit("sem_post B");
+        if (sem_post(&shm_ss->view_print_pending_sem) == -1)
+            errExit("Uncaught error: failed to post to print done semaphore");
     }
 
     //Game over screen:
@@ -80,8 +80,8 @@ int main(int argc, char* argv[]){
     printf("\n");
 
     //Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen
-    if (sem_post(&shm_ss->B) == -1)
-        errExit("sem_post B final");
+    if (sem_post(&shm_ss->view_print_pending_sem) == -1)
+        errExit("Uncaught error: failed to post to print done semaphore");
 
     munmap(shm_bgs, boardGameStateSize);
     munmap(shm_ss, SYNC_STATE_SIZE);

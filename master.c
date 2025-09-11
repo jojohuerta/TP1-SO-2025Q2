@@ -227,11 +227,11 @@ int main(int argc, char *argv[]){
 
     // - Master-view sync - //
     if (strcmp(view_path, "")) {
-        if (sem_post(&shm_ss->A) == -1)
-            errExit("Uncaught error: failed to post to semaphore A");   //TODO: nombre semaforos
+        if (sem_post(&shm_ss->view_print_pending_sem) == -1)
+            errExit("Uncaught error: failed to post to print pending semaphore");   //TODO: nombre semaforos
 
-        if (sem_wait(&shm_ss->B) == -1)
-            errExit("Uncaught error: failed to wait for semaphore B");   //TODO: nombre semaforos
+        if (sem_wait(&shm_ss->view_print_done_sem) == -1)
+            errExit("Uncaught error: failed to wait for print done semaphore");   //TODO: nombre semaforos
     }
 
     // --- Round Robin scheduling among players --- //
@@ -260,8 +260,8 @@ int main(int argc, char *argv[]){
         }
 
         //Nos encargamos de el player que le corresponde el turno
-        if (sem_post(&shm_ss->playerSem[currentPlayerIndex]) == -1) {
-            errExit("Uncaught error: failed to post to player semaphore");      //TODO: nombre semaforos
+        if (sem_post(&shm_ss->player_can_move_sem[currentPlayerIndex]) == -1) {
+            errExit("Uncaught error: failed to post to player can move semaphore");      //TODO: nombre semaforos
         }
 
         //Esperar al jugador a que de su respuesta (al que le corresponde el turno)
@@ -289,21 +289,21 @@ int main(int argc, char *argv[]){
                 printf("Turno %d del master. Movimiento recibido por parte del jugador %d: %d\n", turn+1, currentPlayerIndex, mov);
 
                 // Lock para modificar el estado compartido. Zona critica
-                if (sem_wait(&shm_ss->mutex) == -1)
-                    errExit("Uncaught error: failed to wait for mutex semaphore");      //TODO: nombre semaforos
+                if (sem_wait(&shm_ss->game_state_mutex) == -1)
+                    errExit("Uncaught error: failed to wait for game state semaphore");      //TODO: nombre semaforos
 
-                if (sem_wait(&shm_ss->writer) == -1)
-                    errExit("Uncaught error: failed to wait for writer semaphore");     //TODO: nombre semaforos
-                if (sem_post(&shm_ss->writer) == -1)
-                    errExit("Uncaught error: failed to post to writer semaphore");      //TODO: nombre semaforos
+                if (sem_wait(&shm_ss->game_state_starvation_mutex) == -1)
+                    errExit("Uncaught error: failed to wait for game state starvation semaphore");     //TODO: nombre semaforos
+                if (sem_post(&shm_ss->game_state_starvation_mutex) == -1)
+                    errExit("Uncaught error: failed to post to game state starvation semaphore");      //TODO: nombre semaforos
 
                 // Validar y ejecutar movimiento
                 int movWasValid = interpretMovement(mov, shm_bgs, currentPlayerIndex);
                 if (movWasValid) {
                     lastValidMov = time(NULL);
                 }
-                if (sem_post(&shm_ss->mutex) == -1)
-                    errExit("Uncaught error: failed to post to mutex semaphore");       //TODO: nombre semaforos
+                if (sem_post(&shm_ss->game_state_mutex) == -1)
+                    errExit("Uncaught error: failed to post to game state semaphore");       //TODO: nombre semaforos
             }
         } else if (readyAmountOfFD == 0) {
         // No se recibió movimiento dentro del timeout de select.
@@ -318,12 +318,12 @@ int main(int argc, char *argv[]){
         //DIBUJARMOS
         if (strcmp(view_path, "")) {
             //Se avisa a la vista que puede imprimir
-            if (sem_post(&shm_ss->A) == -1)
-                errExit("Uncaught error: failed to post to semaphore A");               //TODO: nombre semaforos
+            if (sem_post(&shm_ss->view_print_pending_sem) == -1)
+                errExit("Uncaught error: failed to post to print pending semaphore");               //TODO: nombre semaforos
 
             //Esperamos a la vista a que termine de imprimr
-            if (sem_wait(&shm_ss->B) == -1)
-                errExit("Uncaught error: failed to wait for semaphore B");              //TODO: nombre semaforos
+            if (sem_wait(&shm_ss->view_print_done_sem) == -1)
+                errExit("Uncaught error: failed to wait for print done semaphore");              //TODO: nombre semaforos
         }
 
         // - Delay - //
@@ -351,11 +351,11 @@ int main(int argc, char *argv[]){
     // - Print end state - //
     if (strcmp(view_path, "")){
     //Cuando termina el juego se le manda a la vista por ultima vez que imprima
-    if (sem_post(&shm_ss->A) == -1)
-        errExit("Uncaught error: failed to post to semaphore A");        //TODO: nombre semaforos
+    if (sem_post(&shm_ss->view_print_pending_sem) == -1)
+        errExit("Uncaught error: failed to post to print pending semaphore");        //TODO: nombre semaforos
     //Esperamos a que la vista imprima la ultima pantalla
-    if (sem_wait(&shm_ss->B) == -1)
-        errExit("Uncaught error: failed to wait for semaphore B");        //TODO: nombre semaforos
+    if (sem_wait(&shm_ss->view_print_done_sem) == -1)
+        errExit("Uncaught error: failed to wait for print done semaphore");        //TODO: nombre semaforos
 
     // - Terminate everyone - //
     //ESPERAMOS AL HIJO VIEW
