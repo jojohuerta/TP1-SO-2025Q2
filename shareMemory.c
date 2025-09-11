@@ -41,7 +41,7 @@ boardGameState * createShmBoardGameState(int boardWidth, int boardHeight, int pl
     shmp->isGameOver = 0;
     memset(shmp->players, 0, sizeof(shmp->players));
     for (int i = 0; i < boardHeight * boardWidth; i++) {
-        shmp->boardStart[i] = getSquareValue(); 
+        shmp->boardStart[i] = (rand() % 8) + 1; 
     }
 
     return shmp;

@@ -20,9 +20,6 @@ int main(int argc, char* argv[]){
     int height = atoi(argv[2]);
     int boardGameStateSize = sizeof(boardGameState) + sizeof(int) * (width * height);
     
-    //TO DO: REVISAR SI ES NECESARIO
-    initRandom();
-
     //Manejo de memoria compartida
     int fd_bgs, fd_ss;
     boardGameState* shm_bgs;
@@ -31,7 +28,7 @@ int main(int argc, char* argv[]){
     //Abrimos y mapeamos la shm del gameboard
     fd_bgs = shm_open(GAME_STATE_PATH, O_RDONLY, 0);
     if (fd_bgs == -1)
-        errExit("shm_open boardGameState in player. Soy del player");
+        errExit("shm_open boardGameState in player");
 
     shm_bgs = mmap(NULL, boardGameStateSize, PROT_READ, MAP_SHARED, fd_bgs, 0);
     if (shm_bgs == MAP_FAILED)
@@ -56,14 +53,14 @@ int main(int argc, char* argv[]){
     }
 
     if (playerID == -1)
-        errExit("No se pudo determinar el playerID (getpid no encontrado)");
+        errExit("playerID not found");
 
     bool blocked;
     int localBoardState[width*height];
     unsigned short currentX, currentY;
     bool isFirstTurn = 1;
 
-    //LIGHTSWITCH! 
+    //Lightswitch
     while(1){
     // Espera a que el master le de permiso para actuar
         if (sem_wait(&shm_ss->playerSem[playerID]) == -1)
@@ -106,11 +103,9 @@ int main(int argc, char* argv[]){
             break;
         }
 
-        //TO DO: DECIDIR SIGUIENTE MOVIMIENTO
-        //unsigned char nextMov = movAnalysis();
+        //Decision y envio del movimiento
         unsigned char nextMov = playerMovAnalysis(localBoardState,(unsigned short) width,(unsigned short) height, playerID, currentX, currentY);
 
-        //TO DO: ENVIAR MOVIMIENTO
         if (write(1, &nextMov, 1) == -1)
             errExit("write player");
     }

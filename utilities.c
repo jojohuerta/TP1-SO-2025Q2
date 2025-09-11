@@ -106,11 +106,3 @@ void initializeAllPlayers(boardGameState *shm_bgs, int playerCount, pid_t * play
         playerInitialization(i, playerPids[i], playerCount, shm_bgs);
     }
 }
-
-void initRandom() {
-    srand(time(NULL) * getpid()); 
-}
-
-int getSquareValue() {
-    return (rand() % 8) + 1;
-}

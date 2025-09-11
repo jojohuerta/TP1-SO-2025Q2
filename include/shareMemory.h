@@ -3,8 +3,6 @@
 
 #include "shmConstants.h" 
 
-void initRandom();
-
 //Crea y mapea el estado del tablero del juego en memoria compartida y retorna un puntero a la estructura mapeada.
 boardGameState * createShmBoardGameState(int boardWidth, int boardHeight, int playerAmount, unsigned int seed );
 
