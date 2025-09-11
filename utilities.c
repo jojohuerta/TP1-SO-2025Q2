@@ -114,7 +114,3 @@ void initRandom() {
 int getSquareValue() {
     return (rand() % 8) + 1;
 }
-
-unsigned char movAnalysis() {
-    return (unsigned char)(rand() % 8);
-}

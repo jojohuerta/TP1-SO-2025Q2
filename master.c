@@ -8,6 +8,7 @@
 #include <sys/select.h>
 #include <unistd.h>
 #include <time.h>
+#include <limits.h>
 
 #include "include/shmConstants.h"
 #include "include/shareMemory.h"

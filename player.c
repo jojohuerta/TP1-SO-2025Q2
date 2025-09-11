@@ -1,13 +1,15 @@
 #include <stdio.h>
 #include <time.h>
-#include "include/shmConstants.h"
-#include "include/utilities.h"
 #include <fcntl.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
+
+#include "include/shmConstants.h"
+#include "include/utilities.h"
+#include "include/playerUtils.h"
 
 int main(int argc, char* argv[]){
     //Trata de parametros
@@ -57,6 +59,9 @@ int main(int argc, char* argv[]){
         errExit("No se pudo determinar el playerID (getpid no encontrado)");
 
     bool blocked;
+    int localBoardState[width*height];
+    unsigned short currentX, currentY;
+    bool isFirstTurn = 1;
 
     //LIGHTSWITCH! 
     while(1){
@@ -76,7 +81,13 @@ int main(int argc, char* argv[]){
         if (sem_post(&shm_ss->readersCountMutex) == -1) 
             errExit("sem_post readersCountMutex");
 
-        //TO DO: CONSULTAR ESTADO
+        //Consulta de estado
+        memcpy(localBoardState, shm_bgs->boardStart, sizeof(int) * width * height);
+        if (isFirstTurn){
+            currentX = shm_bgs->players[playerID].x;
+            currentY = shm_bgs->players[playerID].y;
+        }
+
         //Consulto el estado a ver si el jugador esta bloqueado
         //Recuerdo que solamente leo y luego ejecuto, porque se deben liberar los semaforos mas adelante
         //Si rompo aca, no los libero y dejo el mutex bloqueado
@@ -96,10 +107,8 @@ int main(int argc, char* argv[]){
         }
 
         //TO DO: DECIDIR SIGUIENTE MOVIMIENTO
-        unsigned char nextMov = movAnalysis();
-        
-        //fprintf(stderr, "Movimiento elegido (c): %c\n", nextMov);
-        //fprintf(stderr, "Movimiento elegido (d): %d\n", nextMov);
+        //unsigned char nextMov = movAnalysis();
+        unsigned char nextMov = playerMovAnalysis(localBoardState,(unsigned short) width,(unsigned short) height, playerID, currentX, currentY);
 
         //TO DO: ENVIAR MOVIMIENTO
         if (write(1, &nextMov, 1) == -1)
