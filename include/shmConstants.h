@@ -6,8 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
-
 #define GAME_STATE_PATH "/game_state"
 
 #define SYNC_STATE_PATH "/game_sync"
