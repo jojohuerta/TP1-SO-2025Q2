@@ -7,9 +7,9 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include "include/shmConstants.h"
-#include "include/utilities.h"
-#include "include/playerUtils.h"
+#include "../include/shmConstants.h"
+#include "../include/utilities.h"
+#include "../include/playerUtils.h"
 
 int main(int argc, char* argv[]){
 

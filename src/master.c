@@ -10,9 +10,9 @@
 #include <time.h>
 #include <limits.h>
 
-#include "include/shmConstants.h"
-#include "include/shareMemory.h"
-#include "include/utilities.h"
+#include "../include/shmConstants.h"
+#include "../include/shareMemory.h"
+#include "../include/utilities.h"
 
 //Defaults
 #define DEF_WIDTH 10

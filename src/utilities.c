@@ -1,5 +1,5 @@
-#include "include/shmConstants.h"
-#include "include/utilities.h"
+#include "../include/shmConstants.h"
+#include "../include/utilities.h"
 #include <unistd.h>
 #include <time.h>
 #include <stdlib.h>

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
-#include "include/shmConstants.h"
+#include "../include/shmConstants.h"
 
 //Valor del espacio libre en la consideracion 
 #define SPACE_SCORE_MULTIPLIER 2.14f
