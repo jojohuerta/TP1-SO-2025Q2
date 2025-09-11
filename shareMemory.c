@@ -109,26 +109,3 @@ void closeShmSyncState(syncState * shmp){
         errExit("Error unlinking shmSyncState");
     }
 }
-
-void cloneBoard(const int *original, int width, int height) {
-    int size = width * height;
-
-    // liberar copia previa si ya existía
-    free(clone);
-
-    clone = malloc(size * sizeof(int));
-    if (!clone) {
-        perror("malloc");
-        exit(1);
-    }
-
-    memcpy(clone, original, size * sizeof(int));
-}
-
-int *getBoardCopy() {
-    return clone;
-}
-
-void freeCopy(){
-    free(clone);
-}

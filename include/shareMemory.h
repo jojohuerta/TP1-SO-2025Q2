@@ -17,8 +17,4 @@ syncState* createShmSyncState(void);
 //Desvincula y elimina la memoria compartida de la estructura de sincronizacion.
 void closeShmSyncState(syncState * shmp);
 
-void cloneBoard(const int *original, int width, int height);
-int *getBoardCopy();
-void freeCopy();
-
 #endif // SHARE_MEMORY_H

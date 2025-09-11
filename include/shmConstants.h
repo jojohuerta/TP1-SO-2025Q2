@@ -48,5 +48,4 @@ typedef struct {
        
 //TO BE DEPRECATED:
 
-
 #endif  // include guard
