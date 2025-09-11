@@ -9,6 +9,9 @@
 #include <time.h>
 #include "include/shmConstants.h"
 #include "include/utilities.h"
+#include "include/shareMemory.h"
+
+static int *clone = NULL;
 
 boardGameState * createShmBoardGameState(int boardWidth, int boardHeight, int playerAmount, unsigned int seed){
     int fd;
@@ -41,8 +44,10 @@ boardGameState * createShmBoardGameState(int boardWidth, int boardHeight, int pl
     shmp->isGameOver = 0;
     memset(shmp->players, 0, sizeof(shmp->players));
     for (int i = 0; i < boardHeight * boardWidth; i++) {
-        shmp->boardStart[i] = getSquareValue(); 
+        shmp->boardStart[i] = getSquareValue();
     }
+
+    cloneBoard(shmp->boardStart, boardWidth, boardHeight);
 
     return shmp;
 }
@@ -103,4 +108,27 @@ void closeShmSyncState(syncState * shmp){
     if (shm_unlink(SYNC_STATE_PATH) == -1) {
         errExit("Error unlinking shmSyncState");
     }
+}
+
+void cloneBoard(const int *original, int width, int height) {
+    int size = width * height;
+
+    // liberar copia previa si ya existía
+    free(clone);
+
+    clone = malloc(size * sizeof(int));
+    if (!clone) {
+        perror("malloc");
+        exit(1);
+    }
+
+    memcpy(clone, original, size * sizeof(int));
+}
+
+int *getBoardCopy() {
+    return clone;
+}
+
+void freeCopy(){
+    free(clone);
 }

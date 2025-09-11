@@ -1,6 +1,14 @@
 #ifndef VIEW_H
 #define VIEW_H
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#include "shmConstants.h"
+#include "shareMemory.h"
+
 typedef enum {
     PLY1_RED =31,
     PLY2_BLUE =34,
@@ -12,5 +20,7 @@ typedef enum {
     PLY8_MAGENTA =35,
     PLY9_BLACK =30
 } PlayerColor;
+
+void whoWon(boardGameState* shm_bgs);
 
 #endif
