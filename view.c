@@ -12,41 +12,46 @@ void draw(boardGameState* bgs);
 
 //TODO: SHM OPEN Y UNLINK PERO... Y LOS FILE DESCRIPTORS?
 int main(int argc, char* argv[]){
-    if (argc != 3)
-        errExit("Argumentos incorrectos para view");
 
-    int width = atoi(argv[1]);
-    int height = atoi(argv[2]);
+    // --- Param validation --- //
+    if (argc != 3)
+        errExit("Uncaught error: illegal params for view binary");
+
+    int width = strtol(argv[1], NULL, 10);
+    int height = strtol(argv[2], NULL, 10);
     int boardGameStateSize = sizeof(boardGameState) + sizeof(int) * (width * height);
 
+    // --- shm connection  --- //
     int fd_bgs, fd_ss;
     boardGameState* shm_bgs;
     syncState * shm_ss;
-    
-    //Abrimos y mapeamos la shm del gameboard
+
+    // - Game state shm - //
     fd_bgs = shm_open(GAME_STATE_PATH, O_RDONLY, 0);
     if (fd_bgs == -1)
-        errExit("shm_open boardGameState in view.");
+        errExit("Uncaught error: failed to open game state shared memory");
 
     shm_bgs = mmap(NULL, boardGameStateSize, PROT_READ, MAP_SHARED, fd_bgs, 0);
     if (shm_bgs == MAP_FAILED)
-        errExit("mmap boardGameState in view.");
+        errExit("Uncaught error: failed to map game state shared memory");
 
-    //abrimos y mapeamos la shm de sincronizacion
+    // - Sync state shm - //
     fd_ss = shm_open(SYNC_STATE_PATH, O_RDWR, 0);
     if (fd_ss == -1)
-        errExit("shm_open syncState in view");
+        errExit("Uncaught error: failed to open sync state shared memory");
 
     shm_ss = mmap(NULL, SYNC_STATE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd_ss, 0);
     if (shm_ss == MAP_FAILED)
-        errExit("mmap syncState in view");
+        errExit("Uncaught error: failed to map sync state shared memory");
 
+    // --- Print state during game --- //
     while (1){
-        //Hay que esperar a que se pueda 
+        
+        // - Wait until there's something to print - //
         if (sem_wait(&shm_ss->view_print_pending_sem) == -1)
             errExit("Uncaught error: failed to wait for print pending semaphore");
 
-        if (shm_bgs->isGameOver)
+        if (shm_bgs->isGameOver)    //TODO: revisar
             break;
 
         //system("clear"); //Hay alguna mejor opcion? "cls"?
@@ -55,12 +60,15 @@ int main(int argc, char* argv[]){
         for(int i=0; i<shm_bgs->playerAmount; i++){
             printf("   %d   %d    %d  \n", i+1, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests);
         }
+
         draw(shm_bgs);
 
-        //Se avisa al master que ya se dibujo
+        // - Notify printing done - //
         if (sem_post(&shm_ss->view_print_pending_sem) == -1)
             errExit("Uncaught error: failed to post to print done semaphore");
     }
+
+    // --- Print game over state --- //
 
     //Game over screen:
     draw(shm_bgs);
@@ -79,18 +87,26 @@ int main(int argc, char* argv[]){
     }
     printf("\n");
 
-    //Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen
+    //Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen TODO: tenemos? el master espera que le avisemos??
     if (sem_post(&shm_ss->view_print_pending_sem) == -1)
         errExit("Uncaught error: failed to post to print done semaphore");
 
-    munmap(shm_bgs, boardGameStateSize);
-    munmap(shm_ss, SYNC_STATE_SIZE);
+    // --- Unmap shms --- //
+
+    if (munmap(shm_bgs, boardGameStateSize) == -1) {
+        errExit("Uncaught error: failed to unmap game state shared memory");
+    }
+
+    if (munmap(shm_ss, SYNC_STATE_SIZE) == -1) {
+        errExit("Uncaught error: failed to unmap sync state shared memory");
+    }
+
     return 0;
 }
 
 
 void draw(boardGameState* bgs){
-    if (bgs->isGameOver){
+    if (bgs->isGameOver){   //TODO: revisar.
         return;
     }
     for (int y = 0; y < bgs->boardHeight; y++){

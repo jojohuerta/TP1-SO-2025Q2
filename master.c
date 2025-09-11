@@ -351,19 +351,19 @@ int main(int argc, char *argv[]){
 
     // - Print end state - //
     if (strcmp(view_path, "")){
-    //Cuando termina el juego se le manda a la vista por ultima vez que imprima
-    if (sem_post(&shm_ss->view_print_pending_sem) == -1)
-        errExit("Uncaught error: failed to post to print pending semaphore");        //TODO: nombre semaforos
-    //Esperamos a que la vista imprima la ultima pantalla
-    if (sem_wait(&shm_ss->view_print_done_sem) == -1)
-        errExit("Uncaught error: failed to wait for print done semaphore");        //TODO: nombre semaforos
+        //Cuando termina el juego se le manda a la vista por ultima vez que imprima
+        if (sem_post(&shm_ss->view_print_pending_sem) == -1)
+            errExit("Uncaught error: failed to post to print pending semaphore");        //TODO: nombre semaforos
+        //Esperamos a que la vista imprima la ultima pantalla
+        if (sem_wait(&shm_ss->view_print_done_sem) == -1)
+            errExit("Uncaught error: failed to wait for print done semaphore");        //TODO: nombre semaforos
 
-    // - Terminate everyone - //
-    //ESPERAMOS AL HIJO VIEW
-    if (strcmp(view_path, "")){
-        if(waitpid(viewPid, &viewStatus, 0) == -1)
-            errExit("Uncaught error: failed to terminate player");
-    }
+        // - Terminate everyone - //
+        //ESPERAMOS AL HIJO VIEW TODO: revisar porque ya sabe que view_path no es null y solo hace waitpid para view
+        if (strcmp(view_path, "")){
+            if(waitpid(viewPid, &viewStatus, 0) == -1)
+                errExit("Uncaught error: failed to terminate view process");
+        }
     }
     
     // - Shared memory close - //

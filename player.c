@@ -12,37 +12,41 @@
 #include "include/playerUtils.h"
 
 int main(int argc, char* argv[]){
-    //Trata de parametros
-    if (argc != 3)
-        errExit("Argumentos incorrectos para player");
 
-    int width = atoi(argv[1]);
-    int height = atoi(argv[2]);
+    // --- Param validation --- //
+    if (argc != 3)
+        errExit("Uncaught error: illegal params for player binary");
+
+    int width = strtol(argv[1], NULL, 10);
+    int height = strtol(argv[2], NULL, 10);
     int boardGameStateSize = sizeof(boardGameState) + sizeof(int) * (width * height);
-    
-    //Manejo de memoria compartida
+
+    // --- shm connection  --- //
     int fd_bgs, fd_ss;
     boardGameState* shm_bgs;
     syncState * shm_ss;
 
-    //Abrimos y mapeamos la shm del gameboard
+    // - Game state shm - //
     fd_bgs = shm_open(GAME_STATE_PATH, O_RDONLY, 0);
     if (fd_bgs == -1)
-        errExit("shm_open boardGameState in player");
+        errExit("Uncaught error: failed to open game state shared memory");
 
     shm_bgs = mmap(NULL, boardGameStateSize, PROT_READ, MAP_SHARED, fd_bgs, 0);
     if (shm_bgs == MAP_FAILED)
-        errExit("mmap boardGameState in player");
+        errExit("Uncaught error: failed to map game state shared memory");
 
-    //abrimos y mapeamos la shm de sincronizacion
+    // - Sync state shm - //
     fd_ss = shm_open(SYNC_STATE_PATH, O_RDWR, 0);
     if (fd_ss == -1)
-        errExit("shm_open syncState in player");
+        errExit("Uncaught error: failed to open sync state shared memory");
 
     shm_ss = mmap(NULL, SYNC_STATE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd_ss, 0);
     if (shm_ss == MAP_FAILED)
-        errExit("mmap syncState in player");
+        errExit("Uncaught error: failed to map sync state shared memory");
 
+    // --- Initialize --- //
+
+    //TODO: revisar toda esta parte
     pid_t my_pid = getpid();
     int playerID = -1;
     for (int i = 0; i < shm_bgs->playerAmount; i++) {
@@ -55,21 +59,23 @@ int main(int argc, char* argv[]){
     if (playerID == -1)
         errExit("playerID not found");
 
-    bool blocked;
+    bool is_blocked;
     int localBoardState[width*height];
     unsigned short currentX, currentY;
     bool isFirstTurn = 1;
 
+    // --- Play --- //
     //Lightswitch
     while(1){
     // Espera a que el master le de permiso para actuar
+        //TODO: revisar lógica de semáforos
         if (sem_wait(&shm_ss->player_can_move_sem[playerID]) == -1)
             errExit("Uncaught error: failed to wait for player can move semaphore");
 
         if (sem_wait(&shm_ss->game_state_starvation_mutex) == -1)
             errExit("Uncaught error: failed to wait for game state starvation semaphore");
         if (sem_post(&shm_ss->game_state_starvation_mutex) == -1)
-            errExit("Uncaught error: failed to post to game state starvation semaphore");
+            errExit("Uncaught error: failed to post to game state starvation semaphore");   //TODO: qué
         if (sem_wait(&shm_ss->reader_count_mutex) == -1)
             errExit("Uncaught error: failed to wait for readers count semaphore");
         if (shm_ss->reader_count++ == 0)
@@ -89,7 +95,7 @@ int main(int argc, char* argv[]){
         //Recuerdo que solamente leo y luego ejecuto, porque se deben liberar los semaforos mas adelante
         //Si rompo aca, no los libero y dejo el mutex bloqueado
         if (shm_bgs->players[playerID].isBlocked)
-            blocked = shm_bgs->players[playerID].isBlocked;
+            is_blocked = shm_bgs->players[playerID].isBlocked;
 
         if (sem_wait(&shm_ss->reader_count_mutex) == -1)
             errExit("Uncaught error: failed to wait for readers count semaphore");
@@ -99,7 +105,7 @@ int main(int argc, char* argv[]){
         if (sem_post(&shm_ss->reader_count_mutex) == -1)
             errExit("Uncaught error: failed to post to readers count semaphore");  
         
-        if (blocked){
+        if (is_blocked){    //TODO: noooo
             break;
         }
 
@@ -110,7 +116,15 @@ int main(int argc, char* argv[]){
             errExit("write player");
     }
     
-    munmap(shm_bgs, boardGameStateSize);
-    munmap(shm_ss, SYNC_STATE_SIZE);
+    // --- Unmap shms --- //
+
+    if (munmap(shm_bgs, boardGameStateSize) == -1) {
+        errExit("Uncaught error: failed to unmap game state shared memory");
+    }
+
+    if (munmap(shm_ss, SYNC_STATE_SIZE) == -1) {
+        errExit("Uncaught error: failed to unmap sync state shared memory");
+    }
+
     exit(EXIT_SUCCESS);
 }
