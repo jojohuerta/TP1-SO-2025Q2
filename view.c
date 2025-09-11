@@ -41,7 +41,6 @@ int main(int argc, char* argv[]){
     if (shm_ss == MAP_FAILED)
         errExit("mmap syncState in view");
 
-    int turno = 0;
     while (1){
         //Hay que esperar a que se pueda 
         if (sem_wait(&shm_ss->A) == -1)

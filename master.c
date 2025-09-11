@@ -372,7 +372,6 @@ int main(int argc, char *argv[]){
     // - Pipes' ends close - //
     for (int i = 0; i < player_count; i++) {
     close(pipefd[i][0]); // cierre del lado de lectura
-    // También podés cerrar el de escritura si no lo cerraste ya:
     close(pipefd[i][1]);
 }
     

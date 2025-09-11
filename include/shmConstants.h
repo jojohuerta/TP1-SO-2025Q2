@@ -7,8 +7,8 @@
 #include <stdlib.h>
 
 #define GAME_STATE_PATH "/game_state"
-
 #define SYNC_STATE_PATH "/game_sync"
+
 #define SYNC_STATE_SIZE sizeof(syncState)
 
 typedef char bool;
@@ -42,8 +42,5 @@ typedef struct {
     bool isGameOver; // Indica si el juego se ha terminado
     int boardStart[]; // Puntero al comienzo del tablero. fila-0, fila-1, ..., fila-n-1
 } boardGameState;
-       
-//TO BE DEPRECATED:
-
 
 #endif  // include guard
