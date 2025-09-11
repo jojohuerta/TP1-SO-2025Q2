@@ -28,6 +28,7 @@
 #define MIN_PLAYERS 1
 #define MAX_PLAYERS 9
 
+//Env vars
 extern char **environ;
 extern int optind;
 extern char *optarg;
