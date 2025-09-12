@@ -3,7 +3,6 @@
 
 #include <sys/mman.h>
 #include <sys/select.h>
-#include <semaphore.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -14,8 +13,6 @@
 
 #include "../include/shmConstants.h"
 #include "../include/errorHandling.h"
-#include "../include/masterShareMemoryManager.h"
-#include "../include/masterPlayerManager.h"
 
 //Defaults
 #define DEF_WIDTH 10
@@ -29,7 +26,6 @@
 #define MIN_WIDTH DEF_WIDTH
 #define MIN_HEIGHT DEF_HEIGHT
 #define MIN_PLAYERS 1
-#define MAX_PLAYERS 9
 #define MAX_ITOA_LENGTH INT_MAX%10
 
 //Env vars
