@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <limits.h>
+#include <signal.h>
 
 #include "../include/shmConstants.h"
 #include "../include/errorHandling.h"
@@ -133,6 +134,14 @@ int main(int argc, char *argv[]){
         errExit(msg);
     }
 
+    // --- Signal handler setup --- //
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = sigtermHandler;
+    sigaction(SIGTERM, &sa, NULL);
+    sigaction(SIGINT, &sa, NULL);
+
+
     // --- Shared memory init --- //
     //Memorias TODO: revisar
     boardGameState * shm_bgs;
@@ -163,6 +172,8 @@ int main(int argc, char *argv[]){
                 errExit("Uncaught error: failed to execute view binary");
         }
     }
+
+    safeStoreViewPid(viewPid);
     
     // --- Player processes init --- //
     int pipefd[MAX_PLAYERS][2];
@@ -218,6 +229,9 @@ int main(int argc, char *argv[]){
             playerPids[i] = pid;
         }
     }
+
+    safeStorePipefd(pipefd);
+    safeStorePlayerPids(playerPids, player_count);
 
     // --- Player distribution --- //
     initializeAllPlayers(shm_bgs, player_count, playerPids);    //TODO: revisar
@@ -363,6 +377,16 @@ int main(int argc, char *argv[]){
         }
     }
     
+    // Despertar a todos los players para que lean isGameOver y esperar a q terminen
+    for (int i = 0; i < player_count; i++) {
+        sem_post(&shm_ss->player_can_move_sem[i]);
+    }
+
+    for (int i = 0; i < player_count; i++) {
+        waitpid(playerPids[i], NULL, 0);
+    }
+
+
     // - Shared memory close - //
     closeShmBoardGameState(shm_bgs);
     closeShmSyncState(shm_ss);

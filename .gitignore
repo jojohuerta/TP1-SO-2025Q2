@@ -59,6 +59,9 @@ dkms.conf
 # VS Code settings
 .vscode/
 
+# PVS Studio
+.PVS-Studio/
+
 # master, player and view executables
 master
 player
