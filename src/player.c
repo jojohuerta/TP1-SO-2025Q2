@@ -1,15 +1,19 @@
-#include <stdio.h>
-#include <time.h>
-#include <fcntl.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
+//#include <stdio.h>
+//#include <time.h>
+//#include <stddef.h>
+//#include <stdlib.h>
+//#include <string.h>
+
 #include <sys/mman.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 #include "../include/shmConstants.h"
 #include "../include/errorHandling.h"
-#include "../include/playerUtils.h"
+#include "../include/playerMovement.h"
+
+//playerMovement.c functions
+unsigned char playerMovAnalysis(int localBoardState[], unsigned short width, unsigned short height, int playerID, unsigned short playerX, unsigned short playerY);
 
 int main(int argc, char* argv[]){
 

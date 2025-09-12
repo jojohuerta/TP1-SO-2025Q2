@@ -1,10 +1,11 @@
-#include <stdio.h>
+//#include <stdio.h>
+
 #include <time.h>
 #include <unistd.h>
 
 #include "../include/shmConstants.h"
 
-//Valor del espacio libre en la consideracion 
+//Valor del espacio libre en la consideracion
 #define SPACE_SCORE_MULTIPLIER 2.14f
 
 typedef struct {
@@ -87,5 +88,6 @@ unsigned char playerMovAnalysis(int localBoardState[], unsigned short width, uns
         srand(time(NULL) * getpid()); 
         return (unsigned char)(rand() % 8);
     }
+    
     return bestMove;
 }

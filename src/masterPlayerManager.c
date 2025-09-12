@@ -1,16 +1,15 @@
+//#include <time.h>
+//#include <stdlib.h>
+
 #include <unistd.h>
-#include <time.h>
-#include <stdlib.h>
+
 #include <math.h>
 
 #include "../include/shmConstants.h"
-#include "../include/errorHandling.h"
-#include "../include/masterPlayerManager.h"
 
 #ifndef PI
 #define PI 3.141592
 #endif
-
 
 int interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player) {
     int dx = 0, dy = 0;

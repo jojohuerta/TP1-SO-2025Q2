@@ -14,7 +14,7 @@ PLAYER = player
 # Sources
 MASTER_SRCS = $(SRC_DIR)/master.c $(SRC_DIR)/masterShareMemoryManager.c $(SRC_DIR)/masterPlayerManager.c
 VIEW_SRCS = $(SRC_DIR)/view.c
-PLAYER_SRCS = $(SRC_DIR)/player.c $(SRC_DIR)/playerUtils.c
+PLAYER_SRCS = $(SRC_DIR)/player.c $(SRC_DIR)/playerMovement.c
 
 # Object files
 # OBJS = $(SRCS:.c=.o)

@@ -1,13 +1,14 @@
-#include <ctype.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
+//#include <ctype.h>
+//#include <stdio.h>
+//#include <stdlib.h>
+//#include <stddef.h> 
+//#include <string.h>
+//#include <time.h>
+
 #include <sys/mman.h>
+#include <fcntl.h>
 #include <sys/stat.h>
-#include <stddef.h> 
 #include <unistd.h>
-#include <string.h>
-#include <time.h>
 
 #include "../include/shmConstants.h"
 #include "../include/errorHandling.h"
@@ -105,6 +106,7 @@ syncState* createShmSyncState(){
 }
 
 void closeShmSyncState(syncState * shm_addr){
+    
     if (munmap(shm_addr, SYNC_STATE_SIZE) == -1) {
         errExit("Uncaught error: failed to unmap sync state shared memory");
     }

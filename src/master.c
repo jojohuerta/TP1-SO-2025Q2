@@ -1,14 +1,16 @@
-#include <ctype.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+
 #include <sys/mman.h>
-#include <sys/wait.h>
 #include <sys/select.h>
+#include <semaphore.h>
+#include <sys/wait.h>
 #include <unistd.h>
-#include <time.h>
+
+#include <errno.h>
 #include <limits.h>
+#include <string.h>
+#include <time.h>
 
 #include "../include/shmConstants.h"
 #include "../include/errorHandling.h"
@@ -28,11 +30,22 @@
 #define MIN_HEIGHT DEF_HEIGHT
 #define MIN_PLAYERS 1
 #define MAX_PLAYERS 9
+#define MAX_ITOA_LENGTH INT_MAX%10
 
 //Env vars
 extern char **environ;
 extern int optind;
 extern char *optarg;
+
+//masterPlayerManager.c functions
+int interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player);
+void initializeAllPlayers(boardGameState *shm_bgs, int playerCount, pid_t * playerPids);
+
+//masterShareMemoryManager.c functions
+boardGameState * createShmBoardGameState(int boardWidth, int boardHeight, int playerAmount, unsigned int seed );
+void closeShmBoardGameState(boardGameState * shmp);
+syncState* createShmSyncState(void);
+void closeShmSyncState(syncState * shmp);
 
 int main(int argc, char *argv[]){
 
@@ -46,46 +59,46 @@ int main(int argc, char *argv[]){
     char players[MAX_PLAYERS][PATH_MAX];
     int player_count = 0;
 
-    char *end;
+    char *str_end;
     errno = 0;
     int opt;
     while ((opt = getopt(argc, argv, "w:h:d:t:s:v:p")) != -1) {
         switch (opt) {
             case 'w':
-                width = strtol(optarg, &end, 10);
-                if (width < MIN_WIDTH || errno != 0 || *end != '\0'){
+                width = strtol(optarg, &str_end, 10);
+                if (width < MIN_WIDTH || errno != 0 || *str_end != '\0'){
                     char msg[STR_ERR_LENGTH];
                     sprintf(msg, "Illegal param: width must be a number, at least %d", MIN_WIDTH);
                     errExit(msg);
                 }
                 break;
             case 'h':
-                height = strtol(optarg, &end, 10);
-                if (height < MIN_HEIGHT || errno !=0 || *end != '\0'){
+                height = strtol(optarg, &str_end, 10);
+                if (height < MIN_HEIGHT || errno !=0 || *str_end != '\0'){
                     char msg[STR_ERR_LENGTH];
                     sprintf(msg, "Illegal param: height must be a number, at least %d", MIN_HEIGHT);
                     errExit(msg);
                 }
                 break;
             case 'd':
-                delay = strtol(optarg, &end, 10);
-                if(errno != 0 || *end != '\0') {
+                delay = strtol(optarg, &str_end, 10);
+                if(errno != 0 || *str_end != '\0') {
                     char msg[STR_ERR_LENGTH];
                     sprintf(msg, "Illegal param: delay must be a number");
                     errExit(msg);
                 }
                 break;
             case 't':
-                timeout = strtol(optarg, &end, 10);
-                if(errno != 0 || *end != '\0') {
+                timeout = strtol(optarg, &str_end, 10);
+                if(errno != 0 || *str_end != '\0') {
                     char msg[STR_ERR_LENGTH];
                     sprintf(msg, "Illegal param: timeout must be a number");
                     errExit(msg);
                 }
                 break;
             case 's':
-                seed = strtol(optarg, &end, 10 || *end != '\0');
-                if(errno != 0 || *end != '\0') {
+                seed = strtol(optarg, &str_end, 10 || *str_end != '\0');
+                if(errno != 0 || *str_end != '\0') {
                     char msg[STR_ERR_LENGTH];
                     sprintf(msg, "Illegal param: seed must be a number");
                     errExit(msg);
