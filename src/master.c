@@ -222,7 +222,6 @@ int main(int argc, char *argv[]){
     initializeAllPlayers(shm_bgs, player_count, playerPids);    //TODO: revisar
 
     fd_set readfds;     //TODO: huh?
-    //int maxfd = -1;     // TODO: huh? unused!!
 
     // --- Game Start --- //
 
@@ -307,8 +306,8 @@ int main(int argc, char *argv[]){
                     errExit("Uncaught error: failed to post to game state semaphore");       //TODO: nombre semaforos
             }
         } else if (readyAmountOfFD == 0) {
-        // No se recibió movimiento dentro del timeout de select.
-        // El máster simplemente continúa con el siguiente jugador.
+        // No se recibio ningun movimiento dentro del timeout de select
+        // El master continua con el siguiente jugador
         } else {
             errExit("Uncaught error: failed to select a player's file descriptor");
         }
@@ -328,10 +327,7 @@ int main(int argc, char *argv[]){
         }
 
         // - Delay - //
-        //usleep esta en microsegundos
-        usleep(delay * 1000);           //TODO: magic number?
-
-
+        usleep(delay * 1000);
 
         //Avanzamos con el Round-Robin. Salteamos a los que estan bloqueados
         currentPlayerIndex = (currentPlayerIndex + 1) % player_count;
@@ -372,9 +368,9 @@ int main(int argc, char *argv[]){
 
     // - Pipes' ends close - //
     for (int i = 0; i < player_count; i++) {
-    close(pipefd[i][0]); // cierre del lado de lectura
-    close(pipefd[i][1]);
-}
+        close(pipefd[i][0]); // cierre del lado de lectura
+        close(pipefd[i][1]);
+    }
     
     exit(EXIT_SUCCESS);
 }
