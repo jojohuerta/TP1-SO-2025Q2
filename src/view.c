@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
     }
     printf("\n");
 
-    // Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen TODO: tenemos? el master espera que le avisemos??
+    // Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen
     if (sem_post(&shm_ss->view_print_done_sem) == -1)
         errExit("Uncaught error: failed to post to print done semaphore");
 

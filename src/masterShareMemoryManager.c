@@ -103,7 +103,7 @@ syncState *createShmSyncState()
         errExit("Uncaught error: failed to initialize readers count semaphore");
     shm_addr->reader_count = 0;
 
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < MAX_PLAYERS; i++)
     {
         if (sem_init(&shm_addr->player_can_move_sem[i], 1, 0) == -1)
             errExit("Uncaught error: failed to initialize player can move semaphores");
@@ -115,6 +115,25 @@ syncState *createShmSyncState()
 void closeShmSyncState(syncState *shm_addr)
 {
 
+    // - Destroy all semaphores - //
+    if (sem_destroy(&shm_addr->view_print_pending_sem) == -1)
+        errExit("Uncaught error: failed to destroy print pending semaphore");
+    if (sem_destroy(&shm_addr->view_print_done_sem) == -1)
+        errExit("Uncaught error: failed to destroy print done semaphore");
+    if (sem_destroy(&shm_addr->game_state_starvation_mutex) == -1)
+        errExit("Uncaught error: failed to destroy game state starvation semaphore");
+    if (sem_destroy(&shm_addr->game_state_mutex) == -1)
+        errExit("Uncaught error: failed to destroy game state semaphore");
+    if (sem_destroy(&shm_addr->reader_count_mutex) == -1)
+        errExit("Uncaught error: failed to destroy readers count semaphore");
+
+    for (int i = 0; i < MAX_PLAYERS; i++)
+    {
+        if (sem_destroy(&shm_addr->player_can_move_sem[i]) == -1)
+            errExit("Uncaught error: failed to destroy player can move semaphores");
+    }
+
+    // - Then unmap - //
     if (munmap(shm_addr, SYNC_STATE_SIZE) == -1)
     {
         errExit("Uncaught error: failed to unmap sync state shared memory");

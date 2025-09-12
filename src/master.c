@@ -251,7 +251,7 @@ int main(int argc, char *argv[])
 
     // --- Game Start --- //
 
-    // - Master-view sync - //
+    // - Starting screen - //
     if (strcmp(view_path, ""))
     {
         if (sem_post(&shm_ss->view_print_pending_sem) == -1)
@@ -394,17 +394,15 @@ int main(int argc, char *argv[])
         // Cuando termina el juego se le manda a la vista por ultima vez que imprima
         if (sem_post(&shm_ss->view_print_pending_sem) == -1)
             errExit("Uncaught error: failed to post to print pending semaphore"); // TODO: nombre semaforos
+
         // Esperamos a que la vista imprima la ultima pantalla
         if (sem_wait(&shm_ss->view_print_done_sem) == -1)
             errExit("Uncaught error: failed to wait for print done semaphore"); // TODO: nombre semaforos
 
-        // - Terminate everyone - //
+        // - Terminate view - //
         // ESPERAMOS AL HIJO VIEW TODO: revisar porque ya sabe que view_path no es null y solo hace waitpid para view
-        if (strcmp(view_path, ""))
-        {
-            if (waitpid(viewPid, &viewStatus, 0) == -1)
-                errExit("Uncaught error: failed to terminate view process");
-        }
+        if (waitpid(viewPid, &viewStatus, 0) == -1)
+            errExit("Uncaught error: failed to terminate view process");
     }
 
     // - Shared memory close - //
