@@ -64,7 +64,7 @@ int main(int argc, char* argv[]){
         draw(shm_bgs);
 
         // - Notify printing done - //
-        if (sem_post(&shm_ss->view_print_pending_sem) == -1)
+        if (sem_post(&shm_ss->view_print_done_sem) == -1)
             errExit("Uncaught error: failed to post to print done semaphore");
     }
 
@@ -88,7 +88,7 @@ int main(int argc, char* argv[]){
     printf("\n");
 
     //Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen TODO: tenemos? el master espera que le avisemos??
-    if (sem_post(&shm_ss->view_print_pending_sem) == -1)
+    if (sem_post(&shm_ss->view_print_done_sem) == -1)
         errExit("Uncaught error: failed to post to print done semaphore");
 
     // --- Unmap shms --- //
