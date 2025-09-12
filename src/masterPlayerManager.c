@@ -1,9 +1,11 @@
-#include "../include/shmConstants.h"
-#include "../include/utilities.h"
 #include <unistd.h>
 #include <time.h>
 #include <stdlib.h>
 #include <math.h>
+
+#include "../include/shmConstants.h"
+#include "../include/errorHandling.h"
+#include "../include/masterPlayerManager.h"
 
 #ifndef PI
 #define PI 3.141592

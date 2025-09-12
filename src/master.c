@@ -11,8 +11,9 @@
 #include <limits.h>
 
 #include "../include/shmConstants.h"
-#include "../include/shareMemory.h"
-#include "../include/utilities.h"
+#include "../include/errorHandling.h"
+#include "../include/masterShareMemoryManager.h"
+#include "../include/masterPlayerManager.h"
 
 //Defaults
 #define DEF_WIDTH 10

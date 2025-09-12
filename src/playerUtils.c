@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <unistd.h>
+
 #include "../include/shmConstants.h"
 
 //Valor del espacio libre en la consideracion 
@@ -15,10 +16,6 @@ Point newPoint(int x, int y){
     p.x = x;
     p.y = y;
     return p;
-}
-
-unsigned char movAnalysis() {
-    return (unsigned char)(rand() % 8);
 }
 
 int countAccessibleCells(int startX, int startY, unsigned short width, unsigned short height, const int localBoardState[]) {

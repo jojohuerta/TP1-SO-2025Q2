@@ -3,10 +3,10 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+
 #include "../include/shmConstants.h"
 #include "../include/view.h"
-
-#include "../include/utilities.h"
+#include "../include/errorHandling.h"
 
 void draw(boardGameState* bgs);
 

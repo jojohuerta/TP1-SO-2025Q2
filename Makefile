@@ -1,6 +1,6 @@
 # Compiler, flags
 CC = gcc
-CFLAGS = -Wall -g -I$(IDIR) -pthread -lm
+CFLAGS = -Wall -g -I$(IDIR) -pthread
 
 # Directories
 SRC_DIR = ./src
@@ -12,7 +12,9 @@ VIEW = view
 PLAYER = player
 
 # Sources
-SRCS = $(SRC_DIR)/shareMemory.c $(SRC_DIR)/utilities.c
+MASTER_SRCS = $(SRC_DIR)/master.c $(SRC_DIR)/masterShareMemoryManager.c $(SRC_DIR)/masterPlayerManager.c
+VIEW_SRCS = $(SRC_DIR)/view.c
+PLAYER_SRCS = $(SRC_DIR)/player.c $(SRC_DIR)/playerUtils.c
 
 # Object files
 # OBJS = $(SRCS:.c=.o)
@@ -22,13 +24,13 @@ DEPS = shmConstants.h
 
 all: $(TARGET) $(VIEW) $(PLAYER)
 
-$(TARGET): $(SRC_DIR)/master.c $(SRCS)
+$(TARGET): $(MASTER_SRCS)
+	$(CC) -o $@ $^ $(CFLAGS) -lm
+
+$(VIEW): $(VIEW_SRCS)
 	$(CC) -o $@ $^ $(CFLAGS)
 
-$(VIEW): $(SRC_DIR)/view.c $(SRCS)
-	$(CC) -o $@ $^ $(CFLAGS)
-
-$(PLAYER): $(SRC_DIR)/player.c $(SRCS) $(SRC_DIR)/playerUtils.c
+$(PLAYER): $(PLAYER_SRCS)
 	$(CC) -o $@ $^ $(CFLAGS)
 
 shm-clean:

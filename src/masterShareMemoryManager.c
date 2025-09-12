@@ -8,8 +8,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
+
 #include "../include/shmConstants.h"
-#include "../include/utilities.h"
+#include "../include/errorHandling.h"
 
 // --- Game state shm --- //
 boardGameState * createShmBoardGameState(int boardWidth, int boardHeight, int playerAmount, unsigned int seed){
