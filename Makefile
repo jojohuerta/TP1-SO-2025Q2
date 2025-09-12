@@ -20,7 +20,7 @@ PLAYER_SRCS = $(SRC_DIR)/player.c $(SRC_DIR)/playerMovement.c
 # OBJS = $(SRCS:.c=.o)
 
 # Dependencies
-DEPS = shmConstants.h
+#DEPS = shmConstants.h
 
 all: $(TARGET) $(VIEW) $(PLAYER)
 

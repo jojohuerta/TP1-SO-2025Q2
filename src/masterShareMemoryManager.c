@@ -10,6 +10,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <string.h>
+
 #include "../include/shmConstants.h"
 #include "../include/errorHandling.h"
 
