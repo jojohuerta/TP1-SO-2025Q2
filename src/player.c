@@ -74,7 +74,6 @@ int main(int argc, char *argv[])
     int localBoardState[width*height];
 
     unsigned short currentX, currentY;
-    bool isFirstTurn = 1;
 
     // --- Play --- //
     // Lightswitch
@@ -99,11 +98,8 @@ int main(int argc, char *argv[])
 
         // Consulta de estado
         memcpy(localBoardState, shm_bgs->boardStart, sizeof(int) * width * height);
-        if (isFirstTurn)
-        {
-            currentX = shm_bgs->players[playerID].x;
-            currentY = shm_bgs->players[playerID].y;
-        }
+        currentX = shm_bgs->players[playerID].x;
+        currentY = shm_bgs->players[playerID].y;
 
         is_game_over = shm_bgs->isGameOver;
 
