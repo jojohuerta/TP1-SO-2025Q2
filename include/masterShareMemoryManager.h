@@ -15,12 +15,12 @@
 //Desvincula y elimina la memoria compartida de la estructura de sincronizacion.
 //void closeShmSyncState(syncState * shmp);
 
-void sigtermHandler(int signum);
+// void sigtermHandler(int signum);
 
-void safeStorePipefd(int pipefd[][2]);
+// void safeStorePipefd(int pipefd[][2]);
 
-void safeStoreViewPid(pid_t viewPid);
+// void safeStoreViewPid(pid_t viewPid);
 
-void safeStorePlayerPids(pid_t playerPids[], int count);
+// void safeStorePlayerPids(pid_t playerPids[], int count);
 
 #endif // SHARE_MEMORY_H

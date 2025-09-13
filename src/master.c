@@ -44,6 +44,11 @@ void closeShmBoardGameState(boardGameState *shmp);
 syncState *createShmSyncState(void);
 void closeShmSyncState(syncState *shmp);
 
+void sigtermHandler(int signum);
+void safeStorePipefd(int pipefd[][2]);
+void safeStoreViewPid(pid_t viewPid);
+void safeStorePlayerPids(pid_t playerPids[], int count);
+
 int main(int argc, char *argv[])
 {
 
