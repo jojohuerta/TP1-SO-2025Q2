@@ -69,9 +69,9 @@ int main(int argc, char *argv[])
     if (playerID == -1)
         errExit("playerID not found");
 
-    bool is_blocked;
+    bool is_blocked = 0;
     bool is_game_over;
-    int localBoardState[width*height];
+    int localBoardState[width * height];
 
     unsigned short currentX, currentY;
 

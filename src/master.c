@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
             }
             break;
         case 's':
-            seed = strtol(optarg, &str_end, 10 || *str_end != '\0');
+            seed = strtol(optarg, &str_end, 10);
             if (errno != 0 || *str_end != '\0')
             {
                 char msg[STR_ERR_LENGTH];
@@ -142,13 +142,13 @@ int main(int argc, char *argv[])
                     snprintf(msg, sizeof(msg), "Illegal param: player path %s does not exist or you lack necessary permissions", argv[optind]);
                     errExit(msg);
                 }
-                if (strlen(argv[optind]) >= PATH_MAX) {
+                if (strlen(argv[optind]) >= PATH_MAX)
+                {
                     char msg[STR_ERR_LENGTH];
                     snprintf(msg, sizeof(msg), "Illegal param: player path too long (max %d characters)", PATH_MAX - 1);
                     errExit(msg);
                 }
                 snprintf(players[player_count++], PATH_MAX, "%s", argv[optind++]);
-
             }
             if (player_count < MIN_PLAYERS)
             {
@@ -178,7 +178,6 @@ int main(int argc, char *argv[])
     sigaction(SIGTERM, &sa, NULL);
     sigaction(SIGINT, &sa, NULL);
 
-
     // --- Shared memory init --- //
     // Memorias TODO: revisar
     boardGameState *shm_bgs = createShmBoardGameState(width, height, player_count, seed);
@@ -187,7 +186,7 @@ int main(int argc, char *argv[])
     // --- View process init --- //
     int viewStatus;
     pid_t viewPid;
-    if (strcmp(view_path, ""))
+    if (strcmp(view_path, "") == 0)
     {
 
         // - View process creation - //
@@ -212,7 +211,7 @@ int main(int argc, char *argv[])
             safeStoreViewPid(viewPid);
         }
     }
-    
+
     // --- Player processes init --- //
     int pipefd[MAX_PLAYERS][2];
     pid_t playerPids[MAX_PLAYERS];
@@ -282,7 +281,7 @@ int main(int argc, char *argv[])
     // --- Game Start --- //
 
     // - Starting screen - //
-    if (strcmp(view_path, ""))
+    if (strcmp(view_path, "") == 0)
     {
         if (sem_post(&shm_ss->view_print_pending_sem) == -1)
             errExit("Uncaught error: failed to post to print pending semaphore"); // TODO: nombre semaforos
@@ -292,7 +291,7 @@ int main(int argc, char *argv[])
     }
 
     // --- Round Robin scheduling among players --- //
-    // Para round robin TODO: no deberia ser SCHED_RR?
+    // Para round robin TODO: no deberia ser SCHED_RR? REVISAR!
     int turn = 0;
     int currentPlayerIndex = 0;
     time_t lastValidMov = time(NULL);
@@ -310,10 +309,9 @@ int main(int argc, char *argv[])
             shm_bgs->isGameOver = 1;
             break;
         }
-
-        // Chequeo si todos los jugadores estan bloqueados
-        if (blockedPlayers >= player_count)
+        else if (blockedPlayers >= player_count)
         {
+            // Chequeo si todos los jugadores estan bloqueados
             printf("Todos los jugadores se encuentran bloqueados\n");
             shm_bgs->isGameOver = 1;
             break;
@@ -321,9 +319,7 @@ int main(int argc, char *argv[])
 
         // Nos encargamos de el player que le corresponde el turno
         if (sem_post(&shm_ss->player_can_move_sem[currentPlayerIndex]) == -1)
-        {
             errExit("Uncaught error: failed to post to player can move semaphore"); // TODO: nombre semaforos
-        }
 
         // Esperar al jugador a que de su respuesta (al que le corresponde el turno)
 
@@ -386,7 +382,7 @@ int main(int argc, char *argv[])
 
         // - Print, notify view process and wait - //
         // DIBUJARMOS
-        if (strcmp(view_path, ""))
+        if (strcmp(view_path, "") == 0)
         {
             // Se avisa a la vista que puede imprimir
             if (sem_post(&shm_ss->view_print_pending_sem) == -1)
@@ -416,10 +412,13 @@ int main(int argc, char *argv[])
 
     // --- Game over --- //
 
-    shm_bgs->isGameOver = 1;
-
+    // TODO: revisar, porque en realidad no tendría que hacer esto. Lo agrego porque CREO que puede salir del while anterior aunque no lo sea.
+    /* según PVS, isGameOver siempre es 1
+    if (shm_bgs->isGameOver != 1)
+        shm_bgs->isGameOver = 1;
+    */
     // - Print end state - //
-    if (strcmp(view_path, ""))
+    if (strcmp(view_path, "") == 0)
     {
         // Cuando termina el juego se le manda a la vista por ultima vez que imprima
         if (sem_post(&shm_ss->view_print_pending_sem) == -1)
@@ -434,13 +433,15 @@ int main(int argc, char *argv[])
         if (waitpid(viewPid, &viewStatus, 0) == -1)
             errExit("Uncaught error: failed to terminate view process");
     }
-  
+
     // Despertar a todos los players para que lean isGameOver y esperar a q terminen
-    for (int i = 0; i < player_count; i++) {
+    for (int i = 0; i < player_count; i++)
+    {
         sem_post(&shm_ss->player_can_move_sem[i]);
     }
 
-    for (int i = 0; i < player_count; i++) {
+    for (int i = 0; i < player_count; i++)
+    {
         waitpid(playerPids[i], NULL, 0);
     }
 
