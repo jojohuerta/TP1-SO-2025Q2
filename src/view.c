@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
         printf("   P  PTS  INV-MOV\n");
         for (int i = 0; i < shm_bgs->playerAmount; i++)
         {
-            printf("   %d   %d    %d  \n", i + 1, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests);
+            printf("   %d   %u    %u  \n", i + 1, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests);
         }
 
         draw(shm_bgs);
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
     printf("PLAYER  POINTS  INVALID-MOVES\n");
     for (int i = 0; i < shm_bgs->playerAmount; i++)
     {
-        printf("  p%d     %d       %d  \n", i + 1, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests);
+        printf("  p%d     %u       %u  \n", i + 1, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests);
     }
     printf("\n");
 

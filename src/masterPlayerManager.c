@@ -3,14 +3,10 @@
 
 #include <stdio.h>
 #include <unistd.h>
-
 #include <math.h>
 
 #include "../include/shmConstants.h"
 
-#ifndef PI
-#define PI 3.141592
-#endif
 
 int interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player)
 {
@@ -111,7 +107,7 @@ void playerInitialization(int player, pid_t playerPid, int playerCount, boardGam
         float radius = fminf(max_r_x, max_r_y); // radio max posible
 
         // Angulo para el jugador (radianes)
-        float angle = (2.0f * PI * player) / playerCount;
+        float angle = (2.0f * M_PI * player) / playerCount;
 
         // Posicion final del jugador en el circulo (0.5f para redondear)
         x = (int)(cx + radius * cosf(angle) + 0.5f);
