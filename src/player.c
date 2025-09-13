@@ -69,7 +69,6 @@ int main(int argc, char *argv[])
     if (playerID == -1)
         errExit("playerID not found");
 
-    bool is_blocked = 0;
     bool is_game_over;
     int localBoardState[width * height];
 
@@ -107,9 +106,6 @@ int main(int argc, char *argv[])
         //Recuerdo que solamente leo y luego ejecuto, porque se deben liberar los semaforos mas adelante
         //Si rompo aca, no los libero y dejo el mutex bloqueado
 
-        if (shm_bgs->players[playerID].isBlocked)
-            is_blocked = shm_bgs->players[playerID].isBlocked;
-
         if (sem_wait(&shm_ss->reader_count_mutex) == -1)
             errExit("Uncaught error: failed to wait for readers count semaphore");
         if (shm_ss->reader_count-- == 1)
@@ -118,14 +114,21 @@ int main(int argc, char *argv[])
         if (sem_post(&shm_ss->reader_count_mutex) == -1)
             errExit("Uncaught error: failed to post to readers count semaphore");
 
-        if (is_blocked || is_game_over)
-        { // TODO: noooo
+        if (is_game_over)
+        {
             break;
         }
 
         // Decision y envio del movimiento
         unsigned char nextMov = playerMovAnalysis(localBoardState, (unsigned short)width, (unsigned short)height, playerID, currentX, currentY);
 
+        if (nextMov == 255)
+        {
+            //shm_bgs->players[playerID].isBlocked = 1;
+            close(1); //STDOUT
+            break;
+        }
+        
         if (write(1, &nextMov, 1) == -1)
             errExit("write player");
     }

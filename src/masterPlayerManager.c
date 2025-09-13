@@ -54,8 +54,6 @@ int interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player)
     int newX = oldX + dx;
     int newY = oldY + dy;
 
-    printf("Jugador %d en (%d,%d) se quiere mover a (%d,%d)\n", player, oldX, oldY, newX, newY);
-
     // Validacion de si no se fue del tablero
     if (newX < 0 || newX >= shm_bgs->boardWidth || newY < 0 || newY >= shm_bgs->boardHeight)
     {

@@ -60,6 +60,7 @@ int main(int argc, char *argv[])
         if (shm_bgs->isGameOver) // TODO: revisar
             break;
 
+        system("clear");
         draw(shm_bgs);
 
         // - Notify printing done - //

@@ -348,7 +348,6 @@ int main(int argc, char *argv[])
             else
             {
                 // Se recibiO un movimiento
-                printf("Turno %d del master. Movimiento recibido por parte del jugador %d: %d\n", turn + 1, currentPlayerIndex, mov);
 
                 // Lock para modificar el estado compartido. Zona critica
                 if (sem_wait(&shm_ss->game_state_mutex) == -1)
