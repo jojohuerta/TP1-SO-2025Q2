@@ -104,10 +104,8 @@ unsigned char playerMovAnalysis(int localBoardState[], unsigned short width, uns
 
     if (bestMove == -1)
     {
-        return 255; 
         //El jugador no puede continuar
-        // srand(time(NULL) * getpid());
-        // return (unsigned char)(rand() % 8);
+        return 255; 
     }
 
     return bestMove;
