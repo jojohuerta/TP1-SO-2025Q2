@@ -17,6 +17,7 @@
 
 #include "../include/shmConstants.h"
 #include "../include/errorHandling.h"
+#include "../include/maxItoaLength.h"
 
 // Defaults
 #define DEF_WIDTH 10
@@ -30,7 +31,6 @@
 #define MIN_WIDTH DEF_WIDTH
 #define MIN_HEIGHT DEF_HEIGHT
 #define MIN_PLAYERS 1
-#define MAX_ITOA_LENGTH (INT_MAX % 10)
 
 // Env vars
 extern char **environ;
