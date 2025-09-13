@@ -60,14 +60,6 @@ int main(int argc, char *argv[])
         if (shm_bgs->isGameOver) // TODO: revisar
             break;
 
-        // system("clear"); //Hay alguna mejor opcion? "cls"?
-        printf("____________________\n");
-        printf("   P  PTS  INV-MOV\n");
-        for (int i = 0; i < shm_bgs->playerAmount; i++)
-        {
-            printf("   %d   %u    %u  \n", i + 1, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests);
-        }
-
         draw(shm_bgs);
 
         // - Notify printing done - //
@@ -79,7 +71,8 @@ int main(int argc, char *argv[])
 
     // Game over screen:
     draw(shm_bgs);
-    printf("\033[1;31m");
+    printf("\n");
+    printf("\033[1;31m"); 
     printf("  #####     #    #     # #######       ######## #       # ####### ######\n");
     printf(" #     #   # #   ##   ## #             #      # #       # #       #     #\n");
     printf(" #        #   #  # # # # #             #      #  #     #  #       #     #\n");
@@ -87,13 +80,15 @@ int main(int argc, char *argv[])
     printf(" #     # ####### #     # #             #      #   #   #   #       #    #\n");
     printf(" #     # #     # #     # #             #      #    # #    #       #     #\n");
     printf("  #####  #     # #     # #######       ########     #     ####### #      #\n");
-    printf("\033[0m");
-    printf("PLAYER  POINTS  INVALID-MOVES\n");
-    for (int i = 0; i < shm_bgs->playerAmount; i++)
-    {
-        printf("  p%d     %u       %u  \n", i + 1, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests);
-    }
+    printf("\033[0m"); 
+    printf("PLAYER  POINTS  INVALID-MOVES  VALID-MOVEMENTS BLOCKED X   Y\n");
+    for(int i=0; i<shm_bgs->playerAmount; i++){
+    printf("%-8s %-12d %-15d %-11d %-4d %-3d %-3d\n", shm_bgs->players[i].playerName, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests,
+            shm_bgs->players[i].validMovementRequests, shm_bgs->players[i].isBlocked, shm_bgs->players[i].x, shm_bgs->players[i].y);
+        }
     printf("\n");
+
+    whoWon(shm_bgs);
 
     // Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen
     if (sem_post(&shm_ss->view_print_done_sem) == -1)
@@ -114,60 +109,107 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-void draw(boardGameState *bgs)
-{
-    if (bgs->isGameOver)
-    { // TODO: revisar.
-        return;
+void draw(boardGameState* bgs){
+
+    printf("==============================================\n");
+    printf("    P    PTS   INV-MOV   VAL-MOV   BLOCK   X   Y\n");
+    for (int i = 0; i < bgs->playerAmount; i++) {
+        printf(" %-7s %-7d %-9d %-9d %-5d %-3d %-3d\n", bgs->players[i].playerName, bgs->players[i].score,bgs->players[i].invalidMovementRequests,
+            bgs->players[i].validMovementRequests, bgs->players[i].isBlocked, bgs->players[i].x, bgs->players[i].y
+        );
     }
-    for (int y = 0; y < bgs->boardHeight; y++)
-    {
-        for (int x = 0; x < bgs->boardWidth; x++)
-        {
+
+    for (int y = 0; y < bgs->boardHeight; y++) {
+        for (int x = 0; x < bgs->boardWidth; x++) {
             printf("|");
             int val = bgs->boardStart[(y * bgs->boardWidth) + x];
-            if (val == 0)
-            {
-                printf("\033[1;%dm%d\033[0m", PLY1_RED, 1);
-            }
-            else if (val == -1)
-            {
-                printf("\033[1;%dm%d\033[0m", PLY2_BLUE, 2);
-            }
-            else if (val == -2)
-            {
-                printf("\033[1;%dm%d\033[0m", PLY3_GREEN, 3);
-            }
-            else if (val == -3)
-            {
-                printf("\033[1;%dm%d\033[0m", PLY4_YELLOW, 4);
-            }
-            else if (val == -4)
-            {
-                printf("\033[1;%dm%d\033[0m", PLY5_ORANGE, 5);
-            }
-            else if (val == -5)
-            {
-                printf("\033[1;%dm%d\033[0m", PLY6_PURPLE, 6);
-            }
-            else if (val == -6)
-            {
-                printf("\033[1;%dm%d\033[0m", PLY7_CYAN, 7);
-            }
-            else if (val == -7)
-            {
-                printf("\033[1;%dm%d\033[0m", PLY8_MAGENTA, 8);
-            }
-            else if (val == -8)
-            {
-                printf("\033[1;%dm%d\033[0m", PLY9_BLACK, 9);
-            }
-            else
-            {
+
+            if (val <= 0) {
+                int idx = -val;  
+                PlayerColor color = (PlayerColor)(PLY1_RED + idx);
+
+                // Verifico si hay un jugador parado en esta casilla
+                int playerHere = 0;
+                for (int i = 0; i < bgs->playerAmount; i++) {
+                    if (bgs->players[i].x == x && bgs->players[i].y == y) {
+                        playerHere = 1;
+                        break;
+                    }
+                }
+                if (playerHere) {
+                    printf("\033[3;4;%dm%d\033[0m", color, idx+1);
+                } else {
+                    printf("\033[%dm%d\033[0m", color, idx+1);
+                }
+            } else {
                 printf("%d", val);
             }
         }
-        printf("\n");
+        printf("|\n");
     }
+
     return;
+}
+
+void whoWon(boardGameState* shm_bgs){
+
+    int bestScore = 0;
+    int numPlayers = shm_bgs->playerAmount;
+
+    // Buscar el mayor score
+    for (int i = 0; i < numPlayers; i++) {
+        if (shm_bgs->players[i].score > bestScore) {
+            bestScore = shm_bgs->players[i].score;
+        }
+    }
+
+    int topScorers[numPlayers];
+    int topCount = 0;
+    for (int i = 0; i < numPlayers; i++) {
+        if (shm_bgs->players[i].score == bestScore) {
+            topScorers[topCount++] = i;
+        }
+    }
+
+    //Si hay empatados de score, buscar el menor número de inválidos
+    if (topCount > 1) {
+        int bestInvalids = shm_bgs->players[topScorers[0]].invalidMovementRequests;
+        for (int j = 1; j < topCount; j++) {  
+            int idx = topScorers[j];
+            if (shm_bgs->players[idx].invalidMovementRequests < bestInvalids) {
+                bestInvalids = shm_bgs->players[idx].invalidMovementRequests;
+            }
+        }
+
+        int winners[numPlayers];
+        int winnerCount = 0;
+        for (int j = 0; j < topCount; j++) {
+            int idx = topScorers[j];
+            if (shm_bgs->players[idx].invalidMovementRequests == bestInvalids) {
+                winners[winnerCount++] = idx;
+            }
+        }
+
+        //Resultado final
+        if (winnerCount == 1) {
+            int idx = winners[0];
+            printf("Tenemos un empate por puntos %d, asique decidiremos el ganador por quien tiene menos movimeintos invalidos\n", shm_bgs->players[idx].score);
+            printf("🏆 El \033[4;32mganador\033[0m es el Jugador %d con solo %d movimientos inválidos.\n",
+                idx + 1, shm_bgs->players[idx].invalidMovementRequests);
+        } else {
+            printf("🤝 Empate entre %d jugadores: ", winnerCount);
+            for (int j = 0; j < winnerCount; j++) {
+                printf("Jugador %d", winners[j] + 1);
+                if (j < winnerCount - 1) {
+                    printf(", ");
+                }
+            }
+            printf(". Todos con %d puntos y %d movimientos inválidos.\n", bestScore, bestInvalids);
+        }
+    } else {
+        int idx = topScorers[0];
+        printf("🏆 El \033[4;32mganador\033[0m es el Jugador %d con %d puntos y %d movimientos inválidos.\n",
+            idx + 1, shm_bgs->players[idx].score, shm_bgs->players[idx].invalidMovementRequests);
+    }
+    printf("\n");
 }
