@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
     // --- View process init --- //
     int viewStatus;
     pid_t viewPid;
-    if (strcmp(view_path, "") == 0)
+    if (strcmp(view_path, "") != 0)
     {
 
         // - View process creation - //
@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
     // --- Game Start --- //
 
     // - Starting screen - //
-    if (strcmp(view_path, "") == 0)
+    if (strcmp(view_path, "") != 0)
     {
         if (sem_post(&shm_ss->view_print_pending_sem) == -1)
             errExit("Uncaught error: failed to post to print pending semaphore"); // TODO: nombre semaforos
@@ -382,7 +382,7 @@ int main(int argc, char *argv[])
 
         // - Print, notify view process and wait - //
         // DIBUJARMOS
-        if (strcmp(view_path, "") == 0)
+        if (strcmp(view_path, "") != 0)
         {
             // Se avisa a la vista que puede imprimir
             if (sem_post(&shm_ss->view_print_pending_sem) == -1)
@@ -418,7 +418,7 @@ int main(int argc, char *argv[])
         shm_bgs->isGameOver = 1;
     */
     // - Print end state - //
-    if (strcmp(view_path, "") == 0)
+    if (strcmp(view_path, "") != 0)
     {
         // Cuando termina el juego se le manda a la vista por ultima vez que imprima
         if (sem_post(&shm_ss->view_print_pending_sem) == -1)
