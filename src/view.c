@@ -1,17 +1,19 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <fcntl.h>
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include <unistd.h>
+
 #include <sys/mman.h>
-#include <unistd.h>
+#include <fcntl.h>
 
 #include "../include/shmConstants.h"
 #include "../include/view.h"
 #include "../include/errorHandling.h"
 
-void draw(boardGameState* bgs);
+void draw(boardGameState *bgs);
 
-//TODO: SHM OPEN Y UNLINK PERO... Y LOS FILE DESCRIPTORS?
-int main(int argc, char* argv[]){
+// TODO: SHM OPEN Y UNLINK PERO... Y LOS FILE DESCRIPTORS?
+int main(int argc, char *argv[])
+{
 
     // --- Param validation --- //
     if (argc != 3)
@@ -23,8 +25,8 @@ int main(int argc, char* argv[]){
 
     // --- shm connection  --- //
     int fd_bgs, fd_ss;
-    boardGameState* shm_bgs;
-    syncState * shm_ss;
+    boardGameState *shm_bgs;
+    syncState *shm_ss;
 
     // - Game state shm - //
     fd_bgs = shm_open(GAME_STATE_PATH, O_RDONLY, 0);
@@ -45,20 +47,22 @@ int main(int argc, char* argv[]){
         errExit("Uncaught error: failed to map sync state shared memory");
 
     // --- Print state during game --- //
-    while (1){
-        
+    while (1)
+    {
+
         // - Wait until there's something to print - //
         if (sem_wait(&shm_ss->view_print_pending_sem) == -1)
             errExit("Uncaught error: failed to wait for print pending semaphore");
 
-        if (shm_bgs->isGameOver)    //TODO: revisar
+        if (shm_bgs->isGameOver) // TODO: revisar
             break;
 
-        //system("clear"); //Hay alguna mejor opcion? "cls"?
+        // system("clear"); //Hay alguna mejor opcion? "cls"?
         printf("____________________\n");
         printf("   P  PTS  INV-MOV\n");
-        for(int i=0; i<shm_bgs->playerAmount; i++){
-            printf("   %d   %d    %d  \n", i+1, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests);
+        for (int i = 0; i < shm_bgs->playerAmount; i++)
+        {
+            printf("   %d   %d    %d  \n", i + 1, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests);
         }
 
         draw(shm_bgs);
@@ -70,9 +74,9 @@ int main(int argc, char* argv[]){
 
     // --- Print game over state --- //
 
-    //Game over screen:
+    // Game over screen:
     draw(shm_bgs);
-    printf("\033[1;31m"); 
+    printf("\033[1;31m");
     printf("  #####     #    #     # #######       ######## #       # ####### ######\n");
     printf(" #     #   # #   ##   ## #             #      # #       # #       #     #\n");
     printf(" #        #   #  # # # # #             #      #  #     #  #       #     #\n");
@@ -80,59 +84,83 @@ int main(int argc, char* argv[]){
     printf(" #     # ####### #     # #             #      #   #   #   #       #    #\n");
     printf(" #     # #     # #     # #             #      #    # #    #       #     #\n");
     printf("  #####  #     # #     # #######       ########     #     ####### #      #\n");
-    printf("\033[0m"); 
+    printf("\033[0m");
     printf("PLAYER  POINTS  INVALID-MOVES\n");
-    for(int i=0; i<shm_bgs->playerAmount; i++){
-        printf("  p%d     %d       %d  \n", i+1, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests);
+    for (int i = 0; i < shm_bgs->playerAmount; i++)
+    {
+        printf("  p%d     %d       %d  \n", i + 1, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests);
     }
     printf("\n");
 
-    //Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen TODO: tenemos? el master espera que le avisemos??
+    // Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen
     if (sem_post(&shm_ss->view_print_done_sem) == -1)
         errExit("Uncaught error: failed to post to print done semaphore");
 
     // --- Unmap shms --- //
 
-    if (munmap(shm_bgs, boardGameStateSize) == -1) {
+    if (munmap(shm_bgs, boardGameStateSize) == -1)
+    {
         errExit("Uncaught error: failed to unmap game state shared memory");
     }
 
-    if (munmap(shm_ss, SYNC_STATE_SIZE) == -1) {
+    if (munmap(shm_ss, SYNC_STATE_SIZE) == -1)
+    {
         errExit("Uncaught error: failed to unmap sync state shared memory");
     }
 
     return 0;
 }
 
-
-void draw(boardGameState* bgs){
-    if (bgs->isGameOver){   //TODO: revisar.
+void draw(boardGameState *bgs)
+{
+    if (bgs->isGameOver)
+    { // TODO: revisar.
         return;
     }
-    for (int y = 0; y < bgs->boardHeight; y++){
-        for (int x = 0; x < bgs->boardWidth; x++){
+    for (int y = 0; y < bgs->boardHeight; y++)
+    {
+        for (int x = 0; x < bgs->boardWidth; x++)
+        {
             printf("|");
             int val = bgs->boardStart[(y * bgs->boardWidth) + x];
-            if (val == 0) {
+            if (val == 0)
+            {
                 printf("\033[1;%dm%d\033[0m", PLY1_RED, 1);
-            } else if (val == -1) {
+            }
+            else if (val == -1)
+            {
                 printf("\033[1;%dm%d\033[0m", PLY2_BLUE, 2);
-            } else if (val == -2) {
+            }
+            else if (val == -2)
+            {
                 printf("\033[1;%dm%d\033[0m", PLY3_GREEN, 3);
-            } else if (val == -3) {
+            }
+            else if (val == -3)
+            {
                 printf("\033[1;%dm%d\033[0m", PLY4_YELLOW, 4);
-            } else if (val == -4) {
+            }
+            else if (val == -4)
+            {
                 printf("\033[1;%dm%d\033[0m", PLY5_ORANGE, 5);
-            } else if (val == -5) {
+            }
+            else if (val == -5)
+            {
                 printf("\033[1;%dm%d\033[0m", PLY6_PURPLE, 6);
-            } else if (val == -6) {
+            }
+            else if (val == -6)
+            {
                 printf("\033[1;%dm%d\033[0m", PLY7_CYAN, 7);
-            } else if (val == -7) {
+            }
+            else if (val == -7)
+            {
                 printf("\033[1;%dm%d\033[0m", PLY8_MAGENTA, 8);
-            } else if (val == -8) {
+            }
+            else if (val == -8)
+            {
                 printf("\033[1;%dm%d\033[0m", PLY9_BLACK, 9);
             }
-            else {
+            else
+            {
                 printf("%d", val);
             }
         }

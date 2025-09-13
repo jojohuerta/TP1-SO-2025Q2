@@ -1,17 +1,22 @@
-#include <stdio.h>
-#include <time.h>
-#include <fcntl.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
+// #include <stdio.h>
+// #include <time.h>
+// #include <stddef.h>
+// #include <stdlib.h>
+// #include <string.h>
+
 #include <sys/mman.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 #include "../include/shmConstants.h"
 #include "../include/errorHandling.h"
-#include "../include/playerUtils.h"
+#include "../include/playerMovement.h"
 
-int main(int argc, char* argv[]){
+// playerMovement.c functions
+unsigned char playerMovAnalysis(int localBoardState[], unsigned short width, unsigned short height, int playerID, unsigned short playerX, unsigned short playerY);
+
+int main(int argc, char *argv[])
+{
 
     // --- Param validation --- //
     if (argc != 3)
@@ -23,8 +28,8 @@ int main(int argc, char* argv[]){
 
     // --- shm connection  --- //
     int fd_bgs, fd_ss;
-    boardGameState* shm_bgs;
-    syncState * shm_ss;
+    boardGameState *shm_bgs;
+    syncState *shm_ss;
 
     // - Game state shm - //
     fd_bgs = shm_open(GAME_STATE_PATH, O_RDONLY, 0);
@@ -46,11 +51,13 @@ int main(int argc, char* argv[]){
 
     // --- Initialize --- //
 
-    //TODO: revisar toda esta parte
+    // TODO: revisar toda esta parte
     pid_t my_pid = getpid();
     int playerID = -1;
-    for (int i = 0; i < shm_bgs->playerAmount; i++) {
-        if (shm_bgs->players[i].processID == my_pid) {
+    for (int i = 0; i < shm_bgs->playerAmount; i++)
+    {
+        if (shm_bgs->players[i].processID == my_pid)
+        {
             playerID = i;
             break;
         }
@@ -62,32 +69,35 @@ int main(int argc, char* argv[]){
     bool is_blocked;
     bool is_game_over;
     int localBoardState[width*height];
+
     unsigned short currentX, currentY;
     bool isFirstTurn = 1;
 
     // --- Play --- //
-    //Lightswitch
-    while(1){
-    // Espera a que el master le de permiso para actuar
-        //TODO: revisar lógica de semáforos
+    // Lightswitch
+    while (1)
+    {
+        // Espera a que el master le de permiso para actuar
+        // TODO: revisar lógica de semáforos
         if (sem_wait(&shm_ss->player_can_move_sem[playerID]) == -1)
             errExit("Uncaught error: failed to wait for player can move semaphore");
 
         if (sem_wait(&shm_ss->game_state_starvation_mutex) == -1)
             errExit("Uncaught error: failed to wait for game state starvation semaphore");
         if (sem_post(&shm_ss->game_state_starvation_mutex) == -1)
-            errExit("Uncaught error: failed to post to game state starvation semaphore");   //TODO: qué
+            errExit("Uncaught error: failed to post to game state starvation semaphore"); // TODO: qué
         if (sem_wait(&shm_ss->reader_count_mutex) == -1)
             errExit("Uncaught error: failed to wait for readers count semaphore");
         if (shm_ss->reader_count++ == 0)
             if (sem_wait(&shm_ss->game_state_mutex) == -1)
                 errExit("Uncaught error: failed to wait for game state semaphore");
-        if (sem_post(&shm_ss->reader_count_mutex) == -1) 
+        if (sem_post(&shm_ss->reader_count_mutex) == -1)
             errExit("Uncaught error: failed to post to readers count semaphore");
 
-        //Consulta de estado
+        // Consulta de estado
         memcpy(localBoardState, shm_bgs->boardStart, sizeof(int) * width * height);
-        if (isFirstTurn){
+        if (isFirstTurn)
+        {
             currentX = shm_bgs->players[playerID].x;
             currentY = shm_bgs->players[playerID].y;
         }
@@ -97,6 +107,7 @@ int main(int argc, char* argv[]){
         //Consulto el estado a ver si el jugador esta bloqueado
         //Recuerdo que solamente leo y luego ejecuto, porque se deben liberar los semaforos mas adelante
         //Si rompo aca, no los libero y dejo el mutex bloqueado
+
         if (shm_bgs->players[playerID].isBlocked)
             is_blocked = shm_bgs->players[playerID].isBlocked;
 
@@ -106,26 +117,29 @@ int main(int argc, char* argv[]){
             if (sem_post(&shm_ss->game_state_mutex) == -1)
                 errExit("Uncaught error: failed to post to game state semaphore");
         if (sem_post(&shm_ss->reader_count_mutex) == -1)
-            errExit("Uncaught error: failed to post to readers count semaphore");  
-        
-        if (is_blocked || is_game_over){    //TODO: noooo
+            errExit("Uncaught error: failed to post to readers count semaphore");
+
+        if (is_blocked || is_game_over)
+        { // TODO: noooo
             break;
         }
 
-        //Decision y envio del movimiento
-        unsigned char nextMov = playerMovAnalysis(localBoardState,(unsigned short) width,(unsigned short) height, playerID, currentX, currentY);
+        // Decision y envio del movimiento
+        unsigned char nextMov = playerMovAnalysis(localBoardState, (unsigned short)width, (unsigned short)height, playerID, currentX, currentY);
 
         if (write(1, &nextMov, 1) == -1)
             errExit("write player");
     }
-    
+
     // --- Unmap shms --- //
 
-    if (munmap(shm_bgs, boardGameStateSize) == -1) {
+    if (munmap(shm_bgs, boardGameStateSize) == -1)
+    {
         errExit("Uncaught error: failed to unmap game state shared memory");
     }
 
-    if (munmap(shm_ss, SYNC_STATE_SIZE) == -1) {
+    if (munmap(shm_ss, SYNC_STATE_SIZE) == -1)
+    {
         errExit("Uncaught error: failed to unmap sync state shared memory");
     }
 
