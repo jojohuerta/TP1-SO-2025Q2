@@ -61,6 +61,9 @@ dkms.conf
 
 # PVS Studio
 .PVS-Studio/
+informe_completo.html/
+salida.log
+strace_out
 
 # master, player and view executables
 master
