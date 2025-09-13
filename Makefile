@@ -37,5 +37,12 @@ shm-clean:
 	rm /dev/shm/game_sync /dev/shm/game_state
 
 clean:
-	$(shm)
 	rm -f $(TARGET) $(VIEW) $(PLAYER) /dev/shm/game_sync /dev/shm/game_state
+	
+pvs:
+	rm salida.log strace_out
+	rm -rf informe_completo.html
+	make clean
+	pvs-studio-analyzer trace -- make all
+	pvs-studio-analyzer analyze -o salida.log
+	plog-converter -a 'GA:1,2,3;64:1,2,3;OP:1,2,3;CS:1,2;MISRA:1,2;AUTOSAR:1' -t fullhtml -o informe_completo.html salida.log
