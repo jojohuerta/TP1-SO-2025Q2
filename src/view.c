@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
     printf("\033[0m"); 
     printf("PLAYER  POINTS  INVALID-MOVES  VALID-MOVEMENTS BLOCKED X   Y\n");
     for(int i=0; i<shm_bgs->playerAmount; i++){
-    printf("%-8s %-12d %-15d %-11d %-4d %-3d %-3d\n", shm_bgs->players[i].playerName, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests,
+    printf("%-8s %-12u %-15u %-11u %-4u %-3hu %-3hu\n", shm_bgs->players[i].playerName, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests,
             shm_bgs->players[i].validMovementRequests, shm_bgs->players[i].isBlocked, shm_bgs->players[i].x, shm_bgs->players[i].y);
         }
     printf("\n");

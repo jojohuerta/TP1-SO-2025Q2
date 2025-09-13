@@ -39,7 +39,7 @@ extern char *optarg;
 
 // masterPlayerManager.c functions
 int interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player);
-void initializeAllPlayers(boardGameState *shm_bgs, int playerCount, pid_t *playerPids);
+void initializeAllPlayers(boardGameState *shm_bgs, int playerCount, pid_t *playerPids, char player_bin_paths[][PATH_MAX]);
 
 // masterShareMemoryManager.c functions
 boardGameState *createShmBoardGameState(int boardWidth, int boardHeight, int playerAmount, unsigned int seed);
@@ -62,8 +62,8 @@ int main(int argc, char *argv[])
     int timeout = DEF_TIMEOUT_S;
     int seed = DEF_SEED;
     char view_path[PATH_MAX] = DEF_VIEW_PATH;
-    char players[MAX_PLAYERS][PATH_MAX];
     int player_count = 0;
+    char player_bin_paths[MAX_PLAYERS][PATH_MAX];
 
     char *str_end;
     errno = 0;
@@ -148,7 +148,8 @@ int main(int argc, char *argv[])
                     snprintf(msg, sizeof(msg), "Illegal param: player path too long (max %d characters)", PATH_MAX - 1);
                     errExit(msg);
                 }
-                snprintf(players[player_count++], PATH_MAX, "%s", argv[optind++]);
+                //snprintf(players[player_count++], PATH_MAX, "%s", argv[optind++]);
+                snprintf(player_bin_paths[player_count++], PATH_MAX, "%s", argv[optind++]);
             }
             if (player_count < MIN_PLAYERS)
             {
@@ -252,9 +253,9 @@ int main(int argc, char *argv[])
             snprintf(widthStr, sizeof(widthStr), "%d", width);
             snprintf(heightStr, sizeof(heightStr), "%d", height);
 
-            char *playerArgs[] = {players[i], widthStr, heightStr, NULL};
+            char *playerArgs[] = {player_bin_paths[i], widthStr, heightStr, NULL};
 
-            if (execve(players[i], playerArgs, environ) == -1)
+            if (execve(player_bin_paths[i], playerArgs, environ) == -1)
                 errExit("Uncaught error: failed to execute player binary");
         }
         else
@@ -274,7 +275,7 @@ int main(int argc, char *argv[])
     safeStorePlayerPids(playerPids, player_count);
 
     // --- Player distribution --- //
-    initializeAllPlayers(shm_bgs, player_count, playerPids); // TODO: revisar
+    initializeAllPlayers(shm_bgs, player_count, playerPids, player_bin_paths); // TODO: revisar
 
     fd_set readfds; // TODO: huh?
 

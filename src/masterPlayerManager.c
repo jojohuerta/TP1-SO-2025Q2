@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <math.h>
+#include <limits.h>
+#include <string.h>
 
 #include "../include/shmConstants.h"
 
@@ -83,7 +85,7 @@ int interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player)
     return 1;
 }
 
-void playerInitialization(int player, pid_t playerPid, int playerCount, boardGameState *shm_bgs)
+void playerInitialization(int player, pid_t playerPid, int playerCount, boardGameState *shm_bgs, char player_bin_paths[][PATH_MAX])
 {
 
     // Centro del tablero
@@ -123,14 +125,17 @@ void playerInitialization(int player, pid_t playerPid, int playerCount, boardGam
     shm_bgs->players[player].validMovementRequests = 0;
     shm_bgs->players[player].processID = playerPid;
 
+    strncpy(shm_bgs->players[player].playerName, player_bin_paths[player], MAX_PLAYER_NAME_LENGTH - 1);
+    shm_bgs->players[player].playerName[MAX_PLAYER_NAME_LENGTH - 1] = '\0';
+
     // Marcar posición en el tablero
     shm_bgs->boardStart[(y * shm_bgs->boardWidth) + x] = (-1) * player;
 }
 
-void initializeAllPlayers(boardGameState *shm_bgs, int playerCount, pid_t *playerPids)
+void initializeAllPlayers(boardGameState *shm_bgs, int playerCount, pid_t *playerPids, char player_bin_paths[][PATH_MAX])
 {
     for (int i = 0; i < playerCount; i++)
     {
-        playerInitialization(i, playerPids[i], playerCount, shm_bgs);
+        playerInitialization(i, playerPids[i], playerCount, shm_bgs, player_bin_paths);
     }
 }
