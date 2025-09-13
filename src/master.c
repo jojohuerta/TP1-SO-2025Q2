@@ -30,7 +30,7 @@
 #define MIN_WIDTH DEF_WIDTH
 #define MIN_HEIGHT DEF_HEIGHT
 #define MIN_PLAYERS 1
-#define MAX_ITOA_LENGTH INT_MAX % 10
+#define MAX_ITOA_LENGTH (INT_MAX % 10)
 
 // Env vars
 extern char **environ;
@@ -139,10 +139,16 @@ int main(int argc, char *argv[])
                 if (access(argv[optind], X_OK))
                 {
                     char msg[STR_ERR_LENGTH];
-                    sprintf(msg, "Illegal param: player path %s does not exist or you lack necessary permissions", argv[optind]);
+                    snprintf(msg, sizeof(msg), "Illegal param: player path %s does not exist or you lack necessary permissions", argv[optind]);
                     errExit(msg);
                 }
-                sprintf(players[player_count++], "%s", argv[optind++]);
+                if (strlen(argv[optind]) >= PATH_MAX) {
+                    char msg[STR_ERR_LENGTH];
+                    snprintf(msg, sizeof(msg), "Illegal param: player path too long (max %d characters)", PATH_MAX - 1);
+                    errExit(msg);
+                }
+                snprintf(players[player_count++], PATH_MAX, "%s", argv[optind++]);
+
             }
             if (player_count < MIN_PLAYERS)
             {
@@ -153,7 +159,7 @@ int main(int argc, char *argv[])
             break;
         default:
             char msg[STR_ERR_LENGTH];
-            sprintf(msg, "Illegal params. Usage: %s [-w width] [-h height] [-d delay] [-t timeout] [-s seed] [-v view] -p player1 [player2 ...]", argv[0]);
+            snprintf(msg, sizeof(msg), "Illegal params. Usage: %s [-w width] [-h height] [-d delay] [-t timeout] [-s seed] [-v view] -p player1 [player2 ...]", argv[0]);
             errExit(msg);
         }
     }
@@ -201,9 +207,11 @@ int main(int argc, char *argv[])
             if (execve(view_path, viewArgs, environ) == -1)
                 errExit("Uncaught error: failed to execute view binary");
         }
+        else
+        {
+            safeStoreViewPid(viewPid);
+        }
     }
-
-    safeStoreViewPid(viewPid);
     
     // --- Player processes init --- //
     int pipefd[MAX_PLAYERS][2];
