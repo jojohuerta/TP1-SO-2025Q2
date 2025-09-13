@@ -67,7 +67,9 @@ int main(int argc, char *argv[])
         errExit("playerID not found");
 
     bool is_blocked;
-    int localBoardState[width * height];
+    bool is_game_over;
+    int localBoardState[width*height];
+
     unsigned short currentX, currentY;
     bool isFirstTurn = 1;
 
@@ -100,9 +102,12 @@ int main(int argc, char *argv[])
             currentY = shm_bgs->players[playerID].y;
         }
 
-        // Consulto el estado a ver si el jugador esta bloqueado
-        // Recuerdo que solamente leo y luego ejecuto, porque se deben liberar los semaforos mas adelante
-        // Si rompo aca, no los libero y dejo el mutex bloqueado
+        is_game_over = shm_bgs->isGameOver;
+
+        //Consulto el estado a ver si el jugador esta bloqueado
+        //Recuerdo que solamente leo y luego ejecuto, porque se deben liberar los semaforos mas adelante
+        //Si rompo aca, no los libero y dejo el mutex bloqueado
+
         if (shm_bgs->players[playerID].isBlocked)
             is_blocked = shm_bgs->players[playerID].isBlocked;
 
@@ -114,7 +119,7 @@ int main(int argc, char *argv[])
         if (sem_post(&shm_ss->reader_count_mutex) == -1)
             errExit("Uncaught error: failed to post to readers count semaphore");
 
-        if (is_blocked)
+        if (is_blocked || is_game_over)
         { // TODO: noooo
             break;
         }

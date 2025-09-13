@@ -4,9 +4,20 @@
 #include <unistd.h>
 
 #include <string.h>
+#include <signal.h>
+#include <sys/wait.h>
 
 #include "../include/shmConstants.h"
 #include "../include/errorHandling.h"
+
+#define MAX_PLAYERS 9
+
+boardGameState * local_shm_bgs = NULL;
+syncState * local_shm_ss = NULL;
+int localPlayerCount = 0;
+int localPipefd[MAX_PLAYERS][2];
+pid_t localPlayerPids[MAX_PLAYERS];
+pid_t localViewPid = -1;
 
 // --- Game state shm --- //
 boardGameState *createShmBoardGameState(int boardWidth, int boardHeight, int playerAmount, unsigned int seed)
@@ -48,6 +59,7 @@ boardGameState *createShmBoardGameState(int boardWidth, int boardHeight, int pla
         shm_addr->boardStart[i] = (rand() % 8) + 1;
     }
 
+    local_shm_bgs = shm_addr;
     return shm_addr;
 }
 
@@ -109,6 +121,7 @@ syncState *createShmSyncState()
             errExit("Uncaught error: failed to initialize player can move semaphores");
     }
 
+    local_shm_ss = shm_addr;
     return shm_addr;
 }
 
@@ -143,4 +156,56 @@ void closeShmSyncState(syncState *shm_addr)
     {
         errExit("Uncaught error: failed to unlink sync state shared memory");
     }
+}
+
+void sigtermHandler(int signum) {
+    printf("\nSIGTERM received. Cleaning up...\n");
+
+    if (local_shm_bgs != NULL) {
+        closeShmBoardGameState(local_shm_bgs);
+    }
+
+    if (local_shm_ss != NULL) {
+        closeShmSyncState(local_shm_ss);
+    }
+
+    for (int i = 0; i < localPlayerCount; i++) {
+        close(localPipefd[i][0]);
+        close(localPipefd[i][1]);
+    }
+
+    if (localViewPid > 0) {
+        kill(localViewPid, SIGTERM);
+    }
+    
+    for (int i = 0; i < localPlayerCount; i++) {
+        if (localPlayerPids[i] > 0) {
+            kill(localPlayerPids[i], SIGTERM );
+        }
+    }
+
+    for (int i = 0; i < localPlayerCount; i++) {
+        waitpid(localPlayerPids[i], NULL, 0);
+    }
+
+    if (localViewPid > 0) {
+        waitpid(localViewPid, NULL, 0);
+    }
+
+    exit(EXIT_SUCCESS);
+}
+
+void safeStorePipefd(int pipefd[][2]){
+    memcpy(localPipefd, pipefd, sizeof(int) * MAX_PLAYERS * 2);
+}
+
+void safeStoreViewPid(pid_t viewPid){
+    localViewPid = viewPid;
+}
+
+void safeStorePlayerPids(pid_t playerPids[], int count) {
+    for (int i = 0; i < count; i++) {
+        localPlayerPids[i] = playerPids[i];
+    }
+    localPlayerCount = count;
 }
