@@ -1,8 +1,6 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
 
-// #include <stdio.h>
-
 #include <stdlib.h>
 
 #include <time.h>
@@ -104,8 +102,8 @@ unsigned char playerMovAnalysis(int localBoardState[], unsigned short width, uns
 
     if (bestMove == -1)
     {
-        //El jugador no puede continuar
-        return 255; 
+        // El jugador no puede continuar
+        return 255;
     }
 
     return bestMove;

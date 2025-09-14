@@ -4,6 +4,7 @@ CFLAGS = -Wall -g -I$(IDIR) -pthread
 
 # Directories
 SRC_DIR = ./src
+MSTR_DIR = $(SRC_DIR)/master
 IDIR = ./include
 
 # Targets
@@ -12,7 +13,7 @@ VIEW = view
 PLAYER = player
 
 # Sources
-MASTER_SRCS = $(SRC_DIR)/master.c $(SRC_DIR)/masterShareMemoryManager.c $(SRC_DIR)/masterPlayerManager.c
+MASTER_SRCS = $(MSTR_DIR)/*
 VIEW_SRCS = $(SRC_DIR)/view.c
 PLAYER_SRCS = $(SRC_DIR)/player.c $(SRC_DIR)/playerMovement.c
 
@@ -34,13 +35,14 @@ $(PLAYER): $(PLAYER_SRCS)
 	$(CC) -o $@ $^ $(CFLAGS)
 
 shm-clean:
-	rm /dev/shm/game_sync /dev/shm/game_state
+#	rm /dev/shm/game_sync /dev/shm/game_state
 
 clean:
-	rm -f $(TARGET) $(VIEW) $(PLAYER) /dev/shm/game_sync /dev/shm/game_state
+	rm -f $(TARGET) $(VIEW) $(PLAYER)
+#	rm -f /dev/shm/game_sync /dev/shm/game_state
 	
 pvs:
-	rm salida.log strace_out
+	rm -rf salida.log strace_out
 	rm -rf informe_completo.html
 	make clean
 	pvs-studio-analyzer trace -- make all

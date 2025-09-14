@@ -1,18 +1,27 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
 
+/* Included in shmConstants.h
+#include <sys/types.h>
+#include <semaphore.h>
+*/
+
+/* Included in errorHandling.h
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <string.h>
+*/
+
+/* Included in maxItoaLength.h
+#include <limits.h>
+*/
 
 #include <sys/mman.h>
 #include <sys/select.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
-#include <errno.h>
-#include <limits.h>
 #include <signal.h>
-#include <string.h>
 #include <time.h>
 
 #include "../include/shmConstants.h"
@@ -37,20 +46,50 @@ extern char **environ;
 extern int optind;
 extern char *optarg;
 
-// masterPlayerManager.c functions
-int interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player);
-void initializeAllPlayers(boardGameState *shm_bgs, int playerCount, pid_t *playerPids, char player_bin_paths[][PATH_MAX]);
-
 // masterShareMemoryManager.c functions
 boardGameState *createShmBoardGameState(int boardWidth, int boardHeight, int playerAmount, unsigned int seed);
 void closeShmBoardGameState(boardGameState *shmp);
 syncState *createShmSyncState(void);
 void closeShmSyncState(syncState *shmp);
 
-void sigtermHandler(int signum);
-void safeStorePipefd(int pipefd[][2]);
-void safeStoreViewPid(pid_t viewPid);
-void safeStorePlayerPids(pid_t playerPids[], int count);
+// masterViewManager.c functions
+void initialize_view(int width, int height, char view_path[], char **environ);
+void print_start_screen(syncState *shm_ss, boardGameState *shm_bgs, int delay, int timeout, int seed);
+void view_print(syncState *shm_ss);
+void view_exit();
+void view_terminate();
+
+// masterPlayerManager.c functions
+void initialize_all_players(int player_count, int board_width, int board_height, char player_paths[][4096], char **environ);
+void spawn_all_players(boardGameState *shm_bgs, char player_paths[][PATH_MAX]);
+int interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player);
+void initializeAllPlayers(boardGameState *shm_bgs, int playerCount, pid_t *playerPids, char player_bin_paths[][PATH_MAX]);
+bool move_player(syncState *shm_ss, boardGameState *shm_bgs, int id, char move);
+void exit_all_players(syncState *shm_ss, int player_count);
+void terminate_all_players(int player_count);
+
+void setup_sig_handler();
+
+sig_atomic_t termination_requested = 0;
+
+// TODO: TEMPORAL!!
+boardGameState *glob_shm_bgs;
+syncState *glob_shm_ss;
+
+void signal_handler(int signum)
+{
+    /* TODO: NO BORRAR
+    if(signum == SIGTERM || signum == SIGINT)
+        termination_requested = 1;
+    */
+    // TODO: TEMPORAL!!
+    view_exit();
+    exit_all_players(glob_shm_ss, glob_shm_bgs->playerAmount);
+    closeShmBoardGameState(glob_shm_bgs);
+    closeShmSyncState(glob_shm_ss);
+
+    exit(EXIT_SUCCESS);
+}
 
 int main(int argc, char *argv[])
 {
@@ -77,7 +116,7 @@ int main(int argc, char *argv[])
             if (width < MIN_WIDTH || errno != 0 || *str_end != '\0')
             {
                 char msg[STR_ERR_LENGTH];
-                sprintf(msg, "Illegal param: width must be a number, at least %d", MIN_WIDTH);
+                snprintf(msg, sizeof(msg), "Illegal param: width must be a number, at least %d", MIN_WIDTH);
                 errExit(msg);
             }
             break;
@@ -86,7 +125,7 @@ int main(int argc, char *argv[])
             if (height < MIN_HEIGHT || errno != 0 || *str_end != '\0')
             {
                 char msg[STR_ERR_LENGTH];
-                sprintf(msg, "Illegal param: height must be a number, at least %d", MIN_HEIGHT);
+                snprintf(msg, sizeof(msg), "Illegal param: height must be a number, at least %d", MIN_HEIGHT);
                 errExit(msg);
             }
             break;
@@ -95,7 +134,7 @@ int main(int argc, char *argv[])
             if (errno != 0 || *str_end != '\0')
             {
                 char msg[STR_ERR_LENGTH];
-                sprintf(msg, "Illegal param: delay must be a number");
+                snprintf(msg, sizeof(msg), "Illegal param: delay must be a number");
                 errExit(msg);
             }
             break;
@@ -104,7 +143,7 @@ int main(int argc, char *argv[])
             if (errno != 0 || *str_end != '\0')
             {
                 char msg[STR_ERR_LENGTH];
-                sprintf(msg, "Illegal param: timeout must be a number");
+                snprintf(msg, sizeof(msg), "Illegal param: timeout must be a number");
                 errExit(msg);
             }
             break;
@@ -113,7 +152,7 @@ int main(int argc, char *argv[])
             if (errno != 0 || *str_end != '\0')
             {
                 char msg[STR_ERR_LENGTH];
-                sprintf(msg, "Illegal param: seed must be a number");
+                snprintf(msg, sizeof(msg), "Illegal param: seed must be a number");
                 errExit(msg);
             }
             break;
@@ -121,7 +160,7 @@ int main(int argc, char *argv[])
             if (access(optarg, X_OK))
             {
                 char msg[STR_ERR_LENGTH];
-                sprintf(msg, "Illegal param: view path %s does not exist or you lack necessary permissions", optarg);
+                snprintf(msg, sizeof(msg), "Illegal param: view path %s does not exist or you lack necessary permissions", optarg);
                 errExit(msg);
             }
             sprintf(view_path, "%s", optarg);
@@ -133,7 +172,7 @@ int main(int argc, char *argv[])
                 if (player_count >= MAX_PLAYERS)
                 {
                     char msg[STR_ERR_LENGTH];
-                    sprintf(msg, "Illegal param: a maximum of %d players is supported", MAX_PLAYERS);
+                    snprintf(msg, sizeof(msg), "Illegal param: a maximum of %d players is supported", MAX_PLAYERS);
                     errExit(msg);
                 }
                 if (access(argv[optind], X_OK))
@@ -148,14 +187,7 @@ int main(int argc, char *argv[])
                     snprintf(msg, sizeof(msg), "Illegal param: player path too long (max %d characters)", PATH_MAX - 1);
                     errExit(msg);
                 }
-                //snprintf(players[player_count++], PATH_MAX, "%s", argv[optind++]);
                 snprintf(player_bin_paths[player_count++], PATH_MAX, "%s", argv[optind++]);
-            }
-            if (player_count < MIN_PLAYERS)
-            {
-                char msg[STR_ERR_LENGTH];
-                sprintf(msg, "Illegal param: a minimum of %d player paths must be specified", MIN_PLAYERS);
-                errExit(msg);
             }
             break;
         default:
@@ -168,67 +200,47 @@ int main(int argc, char *argv[])
     if (player_count < MIN_PLAYERS)
     {
         char msg[STR_ERR_LENGTH];
-        sprintf(msg, "Illegal param: a minimum of %d player paths must be specified with option '-p'", MIN_PLAYERS);
+        snprintf(msg, sizeof(msg), "Illegal param: a minimum of %d player paths must be specified with option '-p'", MIN_PLAYERS);
         errExit(msg);
     }
 
     // --- Signal handler setup --- //
-    struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_handler = sigtermHandler;
-    sigaction(SIGTERM, &sa, NULL);
-    sigaction(SIGINT, &sa, NULL);
+    setup_sig_handler();
 
     // --- Shared memory init --- //
-    // Memorias TODO: revisar
     boardGameState *shm_bgs = createShmBoardGameState(width, height, player_count, seed);
     syncState *shm_ss = createShmSyncState();
 
+    // TODO: TEMPORAL!!!
+    glob_shm_bgs = shm_bgs;
+    glob_shm_ss = shm_ss;
+
     // --- View process init --- //
-    int viewStatus;
-    pid_t viewPid;
-    if (strcmp(view_path, "") != 0)
+    bool view_specified = strcmp(view_path, "") != 0;
+    if (view_specified)
     {
-
-        // - View process creation - //
-        viewPid = fork();
-        if (viewPid == -1)
-            errExit("Uncaught error: failed to create view process");
-
-        // - View process execution - //
-        char heightStr[MAX_ITOA_LENGTH], widthStr[MAX_ITOA_LENGTH];
-        snprintf(widthStr, sizeof(widthStr), "%d", width);
-        snprintf(heightStr, sizeof(heightStr), "%d", height);
-
-        char *viewArgs[] = {view_path, widthStr, heightStr, NULL};
-
-        if (viewPid == 0)
-        {
-            if (execve(view_path, viewArgs, environ) == -1)
-                errExit("Uncaught error: failed to execute view binary");
-        }
-        else
-        {
-            safeStoreViewPid(viewPid);
-        }
+        initialize_view(width, height, view_path, environ);
     }
 
     // --- Player processes init --- //
-    int pipefd[MAX_PLAYERS][2];
-    pid_t playerPids[MAX_PLAYERS];
-    int playerFds[MAX_PLAYERS];
+
+    // initialize_all_players(player_count, width, height, player_bin_paths, environ);
+
+    int pipefd[player_count][2];
+    pid_t playerPids[player_count];
+    int playerFds[player_count];
 
     for (int i = 0; i < player_count; i++)
     {
 
         // - Master-player pipes creation - //
         if (pipe(pipefd[i]) == -1)
-            errExit("Uncaught error: failed to create pipe for master-player communication");
+            errExit("Unexpected error: failed to create pipe for master-player communication");
 
         // - Player processeses creation - //
         pid_t pid = fork();
         if (pid == -1)
-            errExit("Uncaught error: failed to create player process");
+            errExit("Unexpected error: failed to create player process");
 
         // - Master-player pipes setup - //
         if (pid == 0)
@@ -243,7 +255,7 @@ int main(int argc, char *argv[])
 
             // Dupe write end to smallest fd (1), now STDOUT is the pipe's write end
             if (dup(pipefd[i][1]) == -1)
-                errExit("Uncaught error: failed to set pipe write end to STDOUT");
+                errExit("Unexpected error: failed to set pipe write end to STDOUT");
 
             // Close old write end
             close(pipefd[i][1]);
@@ -256,7 +268,7 @@ int main(int argc, char *argv[])
             char *playerArgs[] = {player_bin_paths[i], widthStr, heightStr, NULL};
 
             if (execve(player_bin_paths[i], playerArgs, environ) == -1)
-                errExit("Uncaught error: failed to execute player binary");
+                errExit("Unexpected error: failed to execute player binary");
         }
         else
         {
@@ -271,24 +283,20 @@ int main(int argc, char *argv[])
         }
     }
 
-    safeStorePipefd(pipefd);
-    safeStorePlayerPids(playerPids, player_count);
+    // safeStorePipefd(pipefd);
+    // safeStorePlayerPids(playerPids, player_count);
 
-    // --- Player distribution --- //
+    // --- Spawn players --- //
     initializeAllPlayers(shm_bgs, player_count, playerPids, player_bin_paths); // TODO: revisar
-
-    fd_set readfds; // TODO: huh?
+    // spawn_all_players(shm_bgs, player_bin_paths);
 
     // --- Game Start --- //
 
     // - Starting screen - //
-    if (strcmp(view_path, "") != 0)
+    if (view_specified)
     {
-        if (sem_post(&shm_ss->view_print_pending_sem) == -1)
-            errExit("Uncaught error: failed to post to print pending semaphore"); // TODO: nombre semaforos
-
-        if (sem_wait(&shm_ss->view_print_done_sem) == -1)
-            errExit("Uncaught error: failed to wait for print done semaphore"); // TODO: nombre semaforos
+        // view_print(shm_ss);
+        print_start_screen(shm_ss, shm_bgs, delay, timeout, seed);
     }
 
     // --- Round Robin scheduling among players --- //
@@ -297,8 +305,9 @@ int main(int argc, char *argv[])
     int currentPlayerIndex = 0;
     time_t lastValidMov = time(NULL);
     int blockedPlayers = 0;
+    fd_set readfds;
 
-    while (1)
+    while (!shm_bgs->isGameOver && !termination_requested)
     {
         turn++;
 
@@ -320,7 +329,7 @@ int main(int argc, char *argv[])
 
         // Nos encargamos de el player que le corresponde el turno
         if (sem_post(&shm_ss->player_can_move_sem[currentPlayerIndex]) == -1)
-            errExit("Uncaught error: failed to post to player can move semaphore"); // TODO: nombre semaforos
+            errExit("Unexpected error: failed to post to player can move semaphore"); // TODO: nombre semaforos
 
         // Esperar al jugador a que de su respuesta (al que le corresponde el turno)
 
@@ -345,27 +354,9 @@ int main(int argc, char *argv[])
                 shm_bgs->players[currentPlayerIndex].isBlocked = 1;
                 blockedPlayers++;
             }
-            else
+            else if (move_player(shm_ss, shm_bgs, currentPlayerIndex, mov))
             {
-                // Se recibiO un movimiento
-
-                // Lock para modificar el estado compartido. Zona critica
-                if (sem_wait(&shm_ss->game_state_mutex) == -1)
-                    errExit("Uncaught error: failed to wait for game state semaphore"); // TODO: nombre semaforos
-
-                if (sem_wait(&shm_ss->game_state_starvation_mutex) == -1)
-                    errExit("Uncaught error: failed to wait for game state starvation semaphore"); // TODO: nombre semaforos
-                if (sem_post(&shm_ss->game_state_starvation_mutex) == -1)
-                    errExit("Uncaught error: failed to post to game state starvation semaphore"); // TODO: nombre semaforos
-
-                // Validar y ejecutar movimiento
-                int movWasValid = interpretMovement(mov, shm_bgs, currentPlayerIndex);
-                if (movWasValid)
-                {
-                    lastValidMov = time(NULL);
-                }
-                if (sem_post(&shm_ss->game_state_mutex) == -1)
-                    errExit("Uncaught error: failed to post to game state semaphore"); // TODO: nombre semaforos
+                lastValidMov = time(NULL);
             }
         }
         else if (readyAmountOfFD == 0)
@@ -375,22 +366,16 @@ int main(int argc, char *argv[])
         }
         else
         {
-            errExit("Uncaught error: failed to select a player's file descriptor");
+            errExit("Unexpected error: failed to select a player's file descriptor");
         }
 
         // --- Print and delay --- //
 
         // - Print, notify view process and wait - //
         // DIBUJARMOS
-        if (strcmp(view_path, "") != 0)
+        if (view_specified)
         {
-            // Se avisa a la vista que puede imprimir
-            if (sem_post(&shm_ss->view_print_pending_sem) == -1)
-                errExit("Uncaught error: failed to post to print pending semaphore"); // TODO: nombre semaforos
-
-            // Esperamos a la vista a que termine de imprimr
-            if (sem_wait(&shm_ss->view_print_done_sem) == -1)
-                errExit("Uncaught error: failed to wait for print done semaphore"); // TODO: nombre semaforos
+            view_print(shm_ss);
         }
 
         // - Delay - //
@@ -412,49 +397,48 @@ int main(int argc, char *argv[])
 
     // --- Game over --- //
 
-    // TODO: revisar, porque en realidad no tendría que hacer esto. Lo agrego porque CREO que puede salir del while anterior aunque no lo sea.
-    /* según PVS, isGameOver siempre es 1
-    if (shm_bgs->isGameOver != 1)
-        shm_bgs->isGameOver = 1;
+    // - Print final state - //
+    /* TODO: NO BORRAR
+    if (view_specified)
+    {
+        if(termination_requested) {
+            view_terminate(shm_ss);
+        } else {
+            view_print(shm_ss);
+            view_exit();
+        }
+    }
+
+    if(termination_requested)
+        terminate_all_players(player_count);
+    else
+        exit_all_players(shm_ss, player_count);
     */
-    // - Print end state - //
-    if (strcmp(view_path, "") != 0)
+
+    // TODO: TEMPORAL!!
+    if (view_specified)
     {
-        // Cuando termina el juego se le manda a la vista por ultima vez que imprima
-        if (sem_post(&shm_ss->view_print_pending_sem) == -1)
-            errExit("Uncaught error: failed to post to print pending semaphore"); // TODO: nombre semaforos
-
-        // Esperamos a que la vista imprima la ultima pantalla
-        if (sem_wait(&shm_ss->view_print_done_sem) == -1)
-            errExit("Uncaught error: failed to wait for print done semaphore"); // TODO: nombre semaforos
-
-        // - Terminate view - //
-        // ESPERAMOS AL HIJO VIEW TODO: revisar porque ya sabe que view_path no es null y solo hace waitpid para view
-        if (waitpid(viewPid, &viewStatus, 0) == -1)
-            errExit("Uncaught error: failed to terminate view process");
+        view_print(shm_ss);
+        view_exit();
     }
-
-    // Despertar a todos los players para que lean isGameOver y esperar a q terminen
-    for (int i = 0; i < player_count; i++)
-    {
-        sem_post(&shm_ss->player_can_move_sem[i]);
-    }
-
-    for (int i = 0; i < player_count; i++)
-    {
-        waitpid(playerPids[i], NULL, 0);
-    }
+    exit_all_players(shm_ss, player_count);
 
     // - Shared memory close - //
     closeShmBoardGameState(shm_bgs);
     closeShmSyncState(shm_ss);
 
-    // - Pipes' ends close - //
-    for (int i = 0; i < player_count; i++)
-    {
-        close(pipefd[i][0]); // cierre del lado de lectura
-        close(pipefd[i][1]);
-    }
+    return 0;
+}
 
-    exit(EXIT_SUCCESS);
+void setup_sig_handler()
+{
+    // --- Signal handler setup --- //
+    struct sigaction sa;
+    sa.sa_handler = signal_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    // memset(&sa, 0, sizeof(sa));
+    if (sigaction(SIGTERM, &sa, NULL) == -1 || sigaction(SIGINT, &sa, NULL) == -1)
+        errExit("Unexpected error: failed to setup signal handler");
 }

@@ -34,8 +34,8 @@ typedef struct
 {
     char playerName[MAX_PLAYER_NAME_LENGTH]; // Nombre del jugador
     unsigned int score;                      // Puntaje
-    unsigned int invalidMovementRequests;      // Cantidad de solicitudes de movimientos inválidas realizadas
-    unsigned int validMovementRequests;    // Cantidad de solicitudes de movimientos válidas realizadas
+    unsigned int invalidMovementRequests;    // Cantidad de solicitudes de movimientos inválidas realizadas
+    unsigned int validMovementRequests;      // Cantidad de solicitudes de movimientos válidas realizadas
     unsigned short x, y;                     // Coordenadas x e y en el tablero
     pid_t processID;                         // Identificador de proceso
     bool isBlocked;                          // Indica si el jugador está bloqueado

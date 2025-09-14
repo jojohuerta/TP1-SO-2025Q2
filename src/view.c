@@ -1,18 +1,50 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
 
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <unistd.h>
-
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <sys/signal.h>
+#include <unistd.h>
 
 #include "../include/shmConstants.h"
 #include "../include/view.h"
 #include "../include/errorHandling.h"
 
-void draw(boardGameState *bgs);
+typedef enum
+{
+    PLY1_RED = 31,
+    PLY2_BLUE = 34,
+    PLY3_GREEN = 32,
+    PLY4_YELLOW = 33,
+    PLY5_ORANGE = 93,
+    PLY6_PURPLE = 95,
+    PLY7_CYAN = 36,
+    PLY8_MAGENTA = 35,
+    PLY9_BLACK = 30
+} PlayerColor;
+
+boardGameState *open_shm_bgs(int board_game_state_size);
+syncState *open_shm_ss();
+void setup_sig_handler();
+
+void draw(boardGameState *shm_bgs);
+void print_state(syncState *shm_ss, boardGameState *shm_bgs);
+void print_game_over_screen(syncState *shm_ss, boardGameState *shm_bgs);
+void whoWon(boardGameState *shm_bgs);
+
+void unmapShm(boardGameState *shm_bgs, syncState *shm_ss, int board_game_state_size);
+
+sig_atomic_t termination_requested = 0;
+
+void signal_handler(int signum)
+{
+    if (signum == SIGTERM || signum == SIGINT)
+        termination_requested = 1;
+
+    exit(EXIT_SUCCESS);
+}
 
 // TODO: SHM OPEN Y UNLINK PERO... Y LOS FILE DESCRIPTORS?
 int main(int argc, char *argv[])
@@ -20,129 +52,118 @@ int main(int argc, char *argv[])
 
     // --- Param validation --- //
     if (argc != 3)
-        errExit("Uncaught error: illegal params for view binary");
+        errExit("Unexpected error: illegal params for view binary");
 
     int width = strtol(argv[1], NULL, 10);
     int height = strtol(argv[2], NULL, 10);
-    int boardGameStateSize = sizeof(boardGameState) + sizeof(int) * (width * height);
+    int board_game_state_size = sizeof(boardGameState) + sizeof(int) * (width * height);
 
     // --- shm connection  --- //
-    int fd_bgs, fd_ss;
-    boardGameState *shm_bgs;
-    syncState *shm_ss;
+    boardGameState *shm_bgs = open_shm_bgs(board_game_state_size);
+    syncState *shm_ss = open_shm_ss();
 
-    // - Game state shm - //
-    fd_bgs = shm_open(GAME_STATE_PATH, O_RDONLY, 0);
-    if (fd_bgs == -1)
-        errExit("Uncaught error: failed to open game state shared memory");
-
-    shm_bgs = mmap(NULL, boardGameStateSize, PROT_READ, MAP_SHARED, fd_bgs, 0);
-    if (shm_bgs == MAP_FAILED)
-        errExit("Uncaught error: failed to map game state shared memory");
-
-    // - Sync state shm - //
-    fd_ss = shm_open(SYNC_STATE_PATH, O_RDWR, 0);
-    if (fd_ss == -1)
-        errExit("Uncaught error: failed to open sync state shared memory");
-
-    shm_ss = mmap(NULL, SYNC_STATE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd_ss, 0);
-    if (shm_ss == MAP_FAILED)
-        errExit("Uncaught error: failed to map sync state shared memory");
+    // --- Signal handler setup --- //
+    setup_sig_handler();
 
     // --- Print state during game --- //
-    while (1)
+    while (!shm_bgs->isGameOver && !termination_requested)
     {
-
-        // - Wait until there's something to print - //
-        if (sem_wait(&shm_ss->view_print_pending_sem) == -1)
-            errExit("Uncaught error: failed to wait for print pending semaphore");
-
-        if (shm_bgs->isGameOver) // TODO: revisar
-            break;
-
-        system("clear");
-        draw(shm_bgs);
-
-        // - Notify printing done - //
-        if (sem_post(&shm_ss->view_print_done_sem) == -1)
-            errExit("Uncaught error: failed to post to print done semaphore");
+        print_state(shm_ss, shm_bgs);
     }
 
     // --- Print game over state --- //
+    if (!termination_requested)
+        print_game_over_screen(shm_ss, shm_bgs);
 
-    // Game over screen:
-    draw(shm_bgs);
-    printf("\n");
-    printf("\033[1;31m"); 
-    printf("  #####     #    #     # #######       ######## #       # ####### ######\n");
-    printf(" #     #   # #   ##   ## #             #      # #       # #       #     #\n");
-    printf(" #        #   #  # # # # #             #      #  #     #  #       #     #\n");
-    printf(" #  #### #     # #  #  # #####   ##### #      #  #     #  #####   ######\n");
-    printf(" #     # ####### #     # #             #      #   #   #   #       #    #\n");
-    printf(" #     # #     # #     # #             #      #    # #    #       #     #\n");
-    printf("  #####  #     # #     # #######       ########     #     ####### #      #\n");
-    printf("\033[0m"); 
-    printf("PLAYER  POINTS  INVALID-MOVES  VALID-MOVEMENTS BLOCKED X   Y\n");
-    for(int i=0; i<shm_bgs->playerAmount; i++){
-    printf("%-8s %-12u %-15u %-11u %-4hhu %-3hu %-3hu\n", shm_bgs->players[i].playerName, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests,
-            shm_bgs->players[i].validMovementRequests, shm_bgs->players[i].isBlocked, shm_bgs->players[i].x, shm_bgs->players[i].y);
-        }
-    printf("\n");
-
-    whoWon(shm_bgs);
-
-    // Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen
-    if (sem_post(&shm_ss->view_print_done_sem) == -1)
-        errExit("Uncaught error: failed to post to print done semaphore");
-
-    // --- Unmap shms --- //
-
-    if (munmap(shm_bgs, boardGameStateSize) == -1)
-    {
-        errExit("Uncaught error: failed to unmap game state shared memory");
-    }
-
-    if (munmap(shm_ss, SYNC_STATE_SIZE) == -1)
-    {
-        errExit("Uncaught error: failed to unmap sync state shared memory");
-    }
+    unmapShm(shm_bgs, shm_ss, board_game_state_size);
 
     return 0;
 }
 
-void draw(boardGameState* bgs){
+boardGameState *open_shm_bgs(int board_game_state_size)
+{
+    int fd_bgs = shm_open(GAME_STATE_PATH, O_RDONLY, 0);
+    if (fd_bgs == -1)
+        errExit("Unexpected error: failed to open game state shared memory");
 
+    boardGameState *shm_bgs = mmap(NULL, board_game_state_size, PROT_READ, MAP_SHARED, fd_bgs, 0);
+    if (shm_bgs == MAP_FAILED)
+        errExit("Unexpected error: failed to map game state shared memory");
+
+    close(fd_bgs);
+    // global_shm_bgs = shm_bgs;
+    return shm_bgs;
+}
+
+syncState *open_shm_ss()
+{
+    int fd_ss = shm_open(SYNC_STATE_PATH, O_RDWR, 0);
+    if (fd_ss == -1)
+        errExit("Unexpected error: failed to open sync state shared memory");
+
+    syncState *shm_ss = mmap(NULL, SYNC_STATE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd_ss, 0);
+    if (shm_ss == MAP_FAILED)
+        errExit("Unexpected error: failed to map sync state shared memory");
+
+    close(fd_ss);
+    // global_shm_ss = shm_ss;
+    return shm_ss;
+}
+
+void setup_sig_handler()
+{
+    // --- Signal handler setup --- //
+    struct sigaction sa;
+    sa.sa_handler = signal_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    if (sigaction(SIGTERM, &sa, NULL) == -1 || sigaction(SIGINT, &sa, NULL) == -1)
+        errExit("Unexpected error: failed to setup signal handler");
+}
+
+void draw(boardGameState *shm_bgs)
+{
     printf("==============================================\n");
     printf("    P    PTS   INV-MOV   VAL-MOV   BLOCK   X   Y\n");
-    for (int i = 0; i < bgs->playerAmount; i++) {
-        printf(" %-7s %-7u %-9u %-9u %-5hhu %-3hu %-3hu\n", bgs->players[i].playerName, bgs->players[i].score,bgs->players[i].invalidMovementRequests,
-            bgs->players[i].validMovementRequests, bgs->players[i].isBlocked, bgs->players[i].x, bgs->players[i].y
-        );
+    for (int i = 0; i < shm_bgs->playerAmount; i++)
+    {
+        printf(" %-7s %-7u %-9u %-9u %-5hhu %-3hu %-3hu\n", shm_bgs->players[i].playerName, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests,
+               shm_bgs->players[i].validMovementRequests, shm_bgs->players[i].isBlocked, shm_bgs->players[i].x, shm_bgs->players[i].y);
     }
 
-    for (int y = 0; y < bgs->boardHeight; y++) {
-        for (int x = 0; x < bgs->boardWidth; x++) {
+    for (int y = 0; y < shm_bgs->boardHeight; y++)
+    {
+        for (int x = 0; x < shm_bgs->boardWidth; x++)
+        {
             printf("|");
-            int val = bgs->boardStart[(y * bgs->boardWidth) + x];
+            int val = shm_bgs->boardStart[(y * shm_bgs->boardWidth) + x];
 
-            if (val <= 0) {
-                int idx = -val;  
+            if (val <= 0)
+            {
+                int idx = -val;
                 PlayerColor color = (PlayerColor)(PLY1_RED + idx);
 
                 // Verifico si hay un jugador parado en esta casilla
                 int playerHere = 0;
-                for (int i = 0; i < bgs->playerAmount; i++) {
-                    if (bgs->players[i].x == x && bgs->players[i].y == y) {
+                for (int i = 0; i < shm_bgs->playerAmount; i++)
+                {
+                    if (shm_bgs->players[i].x == x && shm_bgs->players[i].y == y)
+                    {
                         playerHere = 1;
                         break;
                     }
                 }
-                if (playerHere) {
-                    printf("\033[3;4;%dm%d\033[0m", color, idx+1);
-                } else {
-                    printf("\033[%dm%d\033[0m", color, idx+1);
+                if (playerHere)
+                {
+                    printf("\033[3;4;%dm%d\033[0m", color, idx + 1);
                 }
-            } else {
+                else
+                {
+                    printf("\033[%dm%d\033[0m", color, idx + 1);
+                }
+            }
+            else
+            {
                 printf("%d", val);
             }
         }
@@ -152,65 +173,144 @@ void draw(boardGameState* bgs){
     return;
 }
 
-void whoWon(boardGameState* shm_bgs){
+void print_state(syncState *shm_ss, boardGameState *shm_bgs)
+{
+    // - Wait until there's something to print - //
+    if (!termination_requested)
+        if (sem_wait(&shm_ss->view_print_pending_sem) == -1)
+            errExit("Unexpected error: failed to wait for print pending semaphore");
+
+    // system("clear");
+    printf("\033[3J\033[H"); // Clear screen and move cursor to top-left
+    // fflush(stdout); // Ensure it's displayed immediately
+    draw(shm_bgs);
+
+    // - Notify printing done - //
+    if (sem_post(&shm_ss->view_print_done_sem) == -1)
+        errExit("Unexpected error: failed to post to print done semaphore");
+}
+
+void print_game_over_screen(syncState *shm_ss, boardGameState *shm_bgs)
+{
+    // system("clear");
+    printf("\033[3J\033[H"); // Clear screen and move cursor to top-left
+    // fflush(stdout); // Ensure it's displayed immediately
+    draw(shm_bgs);
+    printf("\n");
+    printf("\033[1;31m");
+    printf("  #####     #    #     # #######       ######## #       # ####### ######\n");
+    printf(" #     #   # #   ##   ## #             #      # #       # #       #     #\n");
+    printf(" #        #   #  # # # # #             #      #  #     #  #       #     #\n");
+    printf(" #  #### #     # #  #  # #####   ##### #      #  #     #  #####   ######\n");
+    printf(" #     # ####### #     # #             #      #   #   #   #       #    #\n");
+    printf(" #     # #     # #     # #             #      #    # #    #       #     #\n");
+    printf("  #####  #     # #     # #######       ########     #     ####### #      #\n");
+    printf("\033[0m");
+    printf("PLAYER  POINTS  INVALID-MOVES  VALID-MOVEMENTS BLOCKED X   Y\n");
+    for (int i = 0; i < shm_bgs->playerAmount; i++)
+    {
+        printf("%-8s %-12u %-15u %-11u %-4hhu %-3hu %-3hu\n", shm_bgs->players[i].playerName, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests,
+               shm_bgs->players[i].validMovementRequests, shm_bgs->players[i].isBlocked, shm_bgs->players[i].x, shm_bgs->players[i].y);
+    }
+    printf("\n");
+
+    whoWon(shm_bgs);
+
+    // Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen
+    if (sem_post(&shm_ss->view_print_done_sem) == -1)
+        errExit("Unexpected error: failed to post to print done semaphore");
+}
+
+void whoWon(boardGameState *shm_bgs)
+{
 
     int bestScore = 0;
     int numPlayers = shm_bgs->playerAmount;
 
     // Buscar el mayor score
-    for (int i = 0; i < numPlayers; i++) {
-        if (shm_bgs->players[i].score > bestScore) {
+    for (int i = 0; i < numPlayers; i++)
+    {
+        if (shm_bgs->players[i].score > bestScore)
+        {
             bestScore = shm_bgs->players[i].score;
         }
     }
 
     int topScorers[numPlayers];
     int topCount = 0;
-    for (int i = 0; i < numPlayers; i++) {
-        if (shm_bgs->players[i].score == bestScore) {
+    for (int i = 0; i < numPlayers; i++)
+    {
+        if (shm_bgs->players[i].score == bestScore)
+        {
             topScorers[topCount++] = i;
         }
     }
 
-    //Si hay empatados de score, buscar el menor número de inválidos
-    if (topCount > 1) {
+    // Si hay empatados de score, buscar el menor número de inválidos
+    if (topCount > 1)
+    {
         int bestInvalids = shm_bgs->players[topScorers[0]].invalidMovementRequests;
-        for (int j = 1; j < topCount; j++) {  
+        for (int j = 1; j < topCount; j++)
+        {
             int idx = topScorers[j];
-            if (shm_bgs->players[idx].invalidMovementRequests < bestInvalids) {
+            if (shm_bgs->players[idx].invalidMovementRequests < bestInvalids)
+            {
                 bestInvalids = shm_bgs->players[idx].invalidMovementRequests;
             }
         }
 
         int winners[numPlayers];
         int winnerCount = 0;
-        for (int j = 0; j < topCount; j++) {
+        for (int j = 0; j < topCount; j++)
+        {
             int idx = topScorers[j];
-            if (shm_bgs->players[idx].invalidMovementRequests == bestInvalids) {
+            if (shm_bgs->players[idx].invalidMovementRequests == bestInvalids)
+            {
                 winners[winnerCount++] = idx;
             }
         }
 
-        //Resultado final
-        if (winnerCount == 1) {
+        // Resultado final
+        if (winnerCount == 1)
+        {
             int idx = winners[0];
             printf("Tenemos un empate por puntos %u, así que decidiremos el ganador por quien tiene menos movimientos inválidos\n", shm_bgs->players[idx].score);
             printf("🏆 El \033[4;32mganador\033[0m es el Jugador %d con solo %u movimientos inválidos.\n",
-                idx + 1, shm_bgs->players[idx].invalidMovementRequests);
-        } else {
+                   idx + 1, shm_bgs->players[idx].invalidMovementRequests);
+        }
+        else
+        {
             printf("🤝 Empate entre %d jugadores: ", winnerCount);
-            for (int j = 0; j < winnerCount; j++) {
+            for (int j = 0; j < winnerCount; j++)
+            {
                 printf("Jugador %d", winners[j] + 1);
-                if (j < winnerCount - 1) {
+                if (j < winnerCount - 1)
+                {
                     printf(", ");
                 }
             }
             printf(". Todos con %d puntos y %d movimientos inválidos.\n", bestScore, bestInvalids);
         }
-    } else {
+    }
+    else
+    {
         int idx = topScorers[0];
         printf("🏆 El \033[4;32mganador\033[0m es el Jugador %d con %u puntos y %u movimientos inválidos.\n",
-            idx + 1, shm_bgs->players[idx].score, shm_bgs->players[idx].invalidMovementRequests);
+               idx + 1, shm_bgs->players[idx].score, shm_bgs->players[idx].invalidMovementRequests);
     }
     printf("\n");
+}
+
+void unmapShm(boardGameState *shm_bgs, syncState *shm_ss, int board_game_state_size)
+{
+    // --- Unmap shms --- //
+    if (munmap(shm_bgs, board_game_state_size) == -1)
+    {
+        errExit("Unexpected error: failed to unmap game state shared memory");
+    }
+
+    if (munmap(shm_ss, SYNC_STATE_SIZE) == -1)
+    {
+        errExit("Unexpected error: failed to unmap sync state shared memory");
+    }
 }
