@@ -21,7 +21,7 @@
 int player_pipes[MAX_PLAYERS][2]; // As master, I will use the read end ([0]).
 pid_t player_pids[MAX_PLAYERS];
 
-void initialize_player(int id, int board_width, int board_height, char player_path[PATH_MAX], char **environ)
+int initialize_player(int id, int board_width, int board_height, char player_path[PATH_MAX], char **environ)
 {
     // - Master-player pipes creation - //
     if (pipe(player_pipes[id]) == -1)
@@ -70,13 +70,14 @@ void initialize_player(int id, int board_width, int board_height, char player_pa
         // playerFds[i] = pipefd[i][0];
         player_pids[id] = player_pid;
     }
+    return player_pipes[id][0];
 }
 
-void initialize_all_players(int player_count, int board_width, int board_height, char player_paths[][PATH_MAX], char **environ)
+void initialize_all_players(int player_count, int board_width, int board_height, char player_paths[][PATH_MAX], char **environ, int player_pipes_fds[MAX_PLAYERS])
 {
     for (int i = 0; i < player_count; i++)
     {
-        initialize_player(i, board_width, board_height, player_paths[i], environ);
+        player_pipes_fds[i] = initialize_player(i, board_width, board_height, player_paths[i], environ);
     }
 }
 
@@ -135,6 +136,7 @@ void spawn_all_players(boardGameState *shm_bgs, char player_paths[][PATH_MAX])
         spawn_player(shm_bgs, i, player_paths[i]);
     }
 }
+
 bool interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player)
 {
     int dx = 0, dy = 0;
@@ -212,7 +214,7 @@ bool move_player(syncState *shm_ss, boardGameState *shm_bgs, int id, char move)
 {
 
     bool did_player_move = 0;
-    
+
     if (sem_wait(&shm_ss->game_state_starvation_mutex) == -1)
         errExit("Unexpected error: failed to wait for game state starvation semaphore");
 
@@ -287,60 +289,5 @@ void terminate_all_players(int player_count)
     for (int i = 0; i < player_count; i++)
     {
         player_terminate(i);
-    }
-}
-
-void playerInitialization(int player, pid_t playerPid, int playerCount, boardGameState *shm_bgs, char player_bin_paths[][PATH_MAX])
-{
-
-    // Centro del tablero
-    float cx = (shm_bgs->boardWidth - 1) / 2.0f;
-    float cy = (shm_bgs->boardHeight - 1) / 2.0f;
-
-    int x, y;
-
-    if (playerCount == 1)
-    {
-        // Posicionar en el centro exacto del tablero
-        x = (int)(cx + 0.5f);
-        y = (int)(cy + 0.5f);
-    }
-    else
-    {
-        // Elegir un radio seguro que no nos acerque demasiado al borde
-        float margin = 2.0f; // padding
-        float max_r_x = cx - margin;
-        float max_r_y = cy - margin;
-        float radius = fminf(max_r_x, max_r_y); // radio max posible
-
-        // Angulo para el jugador (radianes)
-        float angle = (2.0f * M_PI * player) / playerCount;
-
-        // Posicion final del jugador en el circulo (0.5f para redondear)
-        x = (int)(cx + radius * cosf(angle) + 0.5f);
-        y = (int)(cy + radius * sinf(angle) + 0.5f);
-    }
-
-    // Asignar valores al jugador
-    shm_bgs->players[player].x = x;
-    shm_bgs->players[player].y = y;
-    shm_bgs->players[player].score = 0;
-    shm_bgs->players[player].isBlocked = 0;
-    shm_bgs->players[player].invalidMovementRequests = 0;
-    shm_bgs->players[player].validMovementRequests = 0;
-    shm_bgs->players[player].processID = playerPid;
-
-    strncpy(shm_bgs->players[player].playerName, player_bin_paths[player], MAX_PLAYER_NAME_LENGTH - 1);
-    shm_bgs->players[player].playerName[MAX_PLAYER_NAME_LENGTH - 1] = '\0';
-
-    // Marcar posición en el tablero
-    shm_bgs->boardStart[(y * shm_bgs->boardWidth) + x] = (-1) * player;
-}
-
-void initializeAllPlayers(boardGameState *shm_bgs, int playerCount, pid_t *playerPids, char player_bin_paths[][PATH_MAX])
-{
-    for (int i = 0; i < playerCount; i++)
-    {
-        playerInitialization(i, playerPids[i], playerCount, shm_bgs, player_bin_paths);
     }
 }

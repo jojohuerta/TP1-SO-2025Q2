@@ -60,10 +60,8 @@ void view_exit();
 void view_terminate();
 
 // masterPlayerManager.c functions
-void initialize_all_players(int player_count, int board_width, int board_height, char player_paths[][4096], char **environ);
+void initialize_all_players(int player_count, int board_width, int board_height, char player_paths[][4096], char **environ, int player_paths_fds[MAX_PLAYERS]);
 void spawn_all_players(boardGameState *shm_bgs, char player_paths[][PATH_MAX]);
-int interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player);
-void initializeAllPlayers(boardGameState *shm_bgs, int playerCount, pid_t *playerPids, char player_bin_paths[][PATH_MAX]);
 bool move_player(syncState *shm_ss, boardGameState *shm_bgs, int id, char move);
 void exit_all_players(syncState *shm_ss, int player_count);
 void terminate_all_players(int player_count);
@@ -224,71 +222,11 @@ int main(int argc, char *argv[])
 
     // --- Player processes init --- //
 
-    // initialize_all_players(player_count, width, height, player_bin_paths, environ);
-
-    int pipefd[player_count][2];
-    pid_t playerPids[player_count];
-    int playerFds[player_count];
-
-    for (int i = 0; i < player_count; i++)
-    {
-
-        // - Master-player pipes creation - //
-        if (pipe(pipefd[i]) == -1)
-            errExit("Unexpected error: failed to create pipe for master-player communication");
-
-        // - Player processeses creation - //
-        pid_t pid = fork();
-        if (pid == -1)
-            errExit("Unexpected error: failed to create player process");
-
-        // - Master-player pipes setup - //
-        if (pid == 0)
-        {
-            // - Player (child) - //
-
-            // Close read end
-            close(pipefd[i][0]);
-
-            // Close STDOUT
-            close(1);
-
-            // Dupe write end to smallest fd (1), now STDOUT is the pipe's write end
-            if (dup(pipefd[i][1]) == -1)
-                errExit("Unexpected error: failed to set pipe write end to STDOUT");
-
-            // Close old write end
-            close(pipefd[i][1]);
-
-            // - Player processes execution - //
-            char widthStr[MAX_ITOA_LENGTH], heightStr[MAX_ITOA_LENGTH];
-            snprintf(widthStr, sizeof(widthStr), "%d", width);
-            snprintf(heightStr, sizeof(heightStr), "%d", height);
-
-            char *playerArgs[] = {player_bin_paths[i], widthStr, heightStr, NULL};
-
-            if (execve(player_bin_paths[i], playerArgs, environ) == -1)
-                errExit("Unexpected error: failed to execute player binary");
-        }
-        else
-        {
-            // - Master (parent) - //
-
-            // Close write end
-            close(pipefd[i][1]);
-
-            // Save pipes' read ends and players' pids for later use
-            playerFds[i] = pipefd[i][0];
-            playerPids[i] = pid;
-        }
-    }
-
-    // safeStorePipefd(pipefd);
-    // safeStorePlayerPids(playerPids, player_count);
+    int player_paths_fds[player_count];
+    initialize_all_players(player_count, width, height, player_bin_paths, environ, player_paths_fds);
 
     // --- Spawn players --- //
-    initializeAllPlayers(shm_bgs, player_count, playerPids, player_bin_paths); // TODO: revisar
-    // spawn_all_players(shm_bgs, player_bin_paths);
+    spawn_all_players(shm_bgs, player_bin_paths);
 
     // --- Game Start --- //
 
@@ -329,24 +267,24 @@ int main(int argc, char *argv[])
 
         // Nos encargamos de el player que le corresponde el turno
         if (sem_post(&shm_ss->player_can_move_sem[currentPlayerIndex]) == -1)
-            errExit("Unexpected error: failed to post to player can move semaphore"); // TODO: nombre semaforos
+            errExit("Unexpected error: failed to post to player can move semaphore");
 
         // Esperar al jugador a que de su respuesta (al que le corresponde el turno)
 
         // Se limpia el readfds y se asigna al set el que se debe escuchar
         FD_ZERO(&readfds);
-        FD_SET(playerFds[currentPlayerIndex], &readfds);
+        FD_SET(player_paths_fds[currentPlayerIndex], &readfds);
 
         struct timeval tv;
         tv.tv_sec = timeout;
         tv.tv_usec = 0;
 
-        int readyAmountOfFD = select(playerFds[currentPlayerIndex] + 1, &readfds, NULL, NULL, &tv);
+        int readyAmountOfFD = select(player_paths_fds[currentPlayerIndex] + 1, &readfds, NULL, NULL, &tv);
 
         if (readyAmountOfFD > 0)
         {
             unsigned char mov;
-            ssize_t r = read(playerFds[currentPlayerIndex], &mov, 1);
+            ssize_t r = read(player_paths_fds[currentPlayerIndex], &mov, 1);
 
             if (r <= 0)
             {
