@@ -295,8 +295,8 @@ int main(int argc, char *argv[])
     // - Starting screen - //
     if (view_specified)
     {
-        // view_print(shm_ss);
         print_start_screen(shm_ss, shm_bgs, delay, timeout, seed);
+        view_print(shm_ss);
     }
 
     // --- Round Robin scheduling among players --- //
