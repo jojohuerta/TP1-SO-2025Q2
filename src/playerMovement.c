@@ -90,7 +90,13 @@ unsigned char playerMovAnalysis(int localBoardState[], unsigned short width, uns
 
             if (cellValue >= 1 && cellValue <= 9)
             { // celda libre
-                int accessibleCells = countAccessibleCells(nextX, nextY, width, height, localBoardState);
+                int tempBoard[width * height];
+                for (int j = 0; j < width * height; j++) {
+                    tempBoard[j] = localBoardState[j];
+                }
+                tempBoard[index] = -1;
+
+                int accessibleCells = countAccessibleCells(nextX, nextY, width, height, tempBoard);
                 float score = cellValue + SPACE_SCORE_MULTIPLIER * accessibleCells;
 
                 if (score > bestScore)
