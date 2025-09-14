@@ -9,7 +9,6 @@
 #include <unistd.h>
 
 #include "../include/shmConstants.h"
-#include "../include/view.h"
 #include "../include/errorHandling.h"
 
 typedef enum
