@@ -2,7 +2,6 @@
 // PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
 
 #include <stdlib.h>
-
 #include <time.h>
 #include <unistd.h>
 
@@ -33,7 +32,7 @@ int countAccessibleCells(int startX, int startY, unsigned short width, unsigned 
     }
     Point queueArray[height * width];
 
-    int dx[] = {0, 1, 1, 1, 0, -1, -1, -1}; // Son las direcciones, en orden. 0 = arriba, 1 = arriba a la derecha, etc.
+    int dx[] = {0, 1, 1, 1, 0, -1, -1, -1}; // All directions. 0 = Up, 1 = Up and right, etc.
     int dy[] = {-1, -1, 0, 1, 1, 1, 0, -1};
 
     int front = 0, rear = 0;
@@ -87,7 +86,8 @@ unsigned char playerMovAnalysis(int localBoardState[], unsigned short width, uns
             int cellValue = localBoardState[index];
 
             if (cellValue >= 1 && cellValue <= 9)
-            { // celda libre
+            { 
+                 // --- Free Cell --- //
                 int tempBoard[width * height];
                 for (int j = 0; j < width * height; j++) {
                     tempBoard[j] = localBoardState[j];
@@ -108,7 +108,7 @@ unsigned char playerMovAnalysis(int localBoardState[], unsigned short width, uns
 
     if (bestMove == -1)
     {
-        // El jugador no puede continuar
+        // --- Player can't go on  --- //
         return 255;
     }
 

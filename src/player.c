@@ -1,12 +1,6 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
 
-// #include <stdio.h>
-// #include <time.h>
-// #include <stddef.h>
-// #include <stdlib.h>
-// #include <string.h>
-
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -69,7 +63,6 @@ int main(int argc, char *argv[])
     // Lightswitch
     while (!shm_bgs->isGameOver && !termination_requested && !is_blocked)
     {
-        // TODO: revisar lógica de semáforos
         // - 1. I want to play! Can I move? - //
         if (sem_wait(&shm_ss->player_can_move_sem[playerID]) == -1)
             errExit("Unexpected error: failed to wait for player can move semaphore");
@@ -113,7 +106,7 @@ int main(int argc, char *argv[])
         if (sem_post(&shm_ss->reader_count_mutex) == -1)
             errExit("Unexpected error: failed to post to readers count semaphore");
 
-        // Decision y envio del movimiento
+         // --- Player now evaluate which movement to make and sends it to the master --- //
         unsigned char nextMov = playerMovAnalysis(localBoardState, (unsigned short)width, (unsigned short)height, playerID, currentX, currentY);
 
         if (nextMov < 8)
