@@ -8,7 +8,6 @@
 
 #include "../include/shmConstants.h"
 #include "../include/errorHandling.h"
-#include "../include/playerMovement.h"
 
 void setup_sig_handler();
 
@@ -21,7 +20,7 @@ int get_id(boardGameState *shm_bgs);
 // playerMovement.c functions
 unsigned char playerMovAnalysis(int localBoardState[], unsigned short width, unsigned short height, int playerID, unsigned short playerX, unsigned short playerY);
 
-int termination_requested = 0;
+sig_atomic_t termination_requested = 0;
 
 void signal_handler(int signum)
 {
@@ -63,50 +62,46 @@ int main(int argc, char *argv[])
     // Lightswitch
     while (!shm_bgs->isGameOver && !termination_requested && !is_blocked)
     {
-        // - 1. I want to play! Can I move? - //
         if (sem_wait(&shm_ss->player_can_move_sem[playerID]) == -1)
             errExit("Unexpected error: failed to wait for player can move semaphore");
 
-        // - 2. I can move! Let's make sure master is safe - //
         if (sem_wait(&shm_ss->game_state_starvation_mutex) == -1)
             errExit("Unexpected error: failed to wait for game state starvation semaphore");
-        if (sem_post(&shm_ss->game_state_starvation_mutex) == -1)
-            errExit("Unexpected error: failed to post to game state starvation semaphore"); // TODO: qué
 
-        // - 3. Alright, let's add myself to the readers. I should check if I'm the first too. - //
+
         if (sem_wait(&shm_ss->reader_count_mutex) == -1)
             errExit("Unexpected error: failed to wait for readers count semaphore");
-        // - 3b. Am  I the first reader? - //
+
         if (shm_ss->reader_count++ == 0)
         {
-            // - 3c. I am! Time to claim game state for the players! - //
             if (sem_wait(&shm_ss->game_state_mutex) == -1)
                 errExit("Unexpected error: failed to wait for game state semaphore");
         }
-        // - 4. I'm done adding myself to the readers. Time to let other players join. - //
+
         if (sem_post(&shm_ss->reader_count_mutex) == -1)
             errExit("Unexpected error: failed to post to readers count semaphore");
 
-        // - 5. Let's get the game state data. I shouldn't take too long. - //
         memcpy(localBoardState, shm_bgs->boardStart, sizeof(int) * width * height);
         currentX = shm_bgs->players[playerID].x;
         currentY = shm_bgs->players[playerID].y;
 
-        // - 6. Done! Let's remove myself from the readers and check if I was the last player to access the state. - //
         if (sem_wait(&shm_ss->reader_count_mutex) == -1)
             errExit("Unexpected error: failed to wait for readers count semaphore");
-        // - 6b. Am I the last reader? - //
+        
         if (shm_ss->reader_count-- == 1)
         {
-            // - 6c. I am! Let's free up game state for master! - //
             if (sem_post(&shm_ss->game_state_mutex) == -1)
                 errExit("Unexpected error: failed to post to game state semaphore");
         }
-        // - 7. I'm done removing myself from the readers! Time to let other players leave. - //
+
         if (sem_post(&shm_ss->reader_count_mutex) == -1)
             errExit("Unexpected error: failed to post to readers count semaphore");
 
-         // --- Player now evaluate which movement to make and sends it to the master --- //
+        if (sem_post(&shm_ss->game_state_starvation_mutex) == -1)
+            errExit("Unexpected error: failed to post to game state starvation semaphore");
+
+        // --- Player now evaluate which movement to make and sends it to the master --- //
+
         unsigned char nextMov = playerMovAnalysis(localBoardState, (unsigned short)width, (unsigned short)height, playerID, currentX, currentY);
 
         if (nextMov < 8)

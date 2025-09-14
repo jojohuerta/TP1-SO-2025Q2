@@ -119,11 +119,11 @@ void setup_sig_handler()
 
 void draw(boardGameState *shm_bgs)
 {
-    printf("==============================================\n");
-    printf("    P    PTS   INV-MOV   VAL-MOV   BLOCK   X   Y\n");
+    printf("=====================================================================================\n");
+    printf("    P\t\t        PTS   INV-MOV   VAL-MOV    BLOCK   X   Y\n");
     for (int i = 0; i < shm_bgs->playerAmount; i++)
     {
-        printf(" %-7s %-7u %-9u %-9u %-5hhu %-3hu %-3hu\n", shm_bgs->players[i].playerName, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests,
+        printf(" %-7s\t\t %-7u %-9u %-9u %-5hhu %-3hu %-3hu\n", shm_bgs->players[i].playerName, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests,
                shm_bgs->players[i].validMovementRequests, shm_bgs->players[i].isBlocked, shm_bgs->players[i].x, shm_bgs->players[i].y);
     }
 
@@ -141,12 +141,11 @@ void draw(boardGameState *shm_bgs)
 
                 // Verify is there is a player in this position
                 int playerHere = 0;
-                for (int i = 0; i < shm_bgs->playerAmount; i++)
+                for (int i = 0; i < shm_bgs->playerAmount && playerHere == 0; i++)
                 {
                     if (shm_bgs->players[i].x == x && shm_bgs->players[i].y == y)
                     {
                         playerHere = 1;
-                        break;
                     }
                 }
                 if (playerHere)

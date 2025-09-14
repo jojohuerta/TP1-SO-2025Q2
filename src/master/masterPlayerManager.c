@@ -212,28 +212,23 @@ bool move_player(syncState *shm_ss, boardGameState *shm_bgs, int id, char move)
 {
 
     bool did_player_move = 0;
+    
+    if (sem_wait(&shm_ss->game_state_starvation_mutex) == -1)
+        errExit("Unexpected error: failed to wait for game state starvation semaphore");
 
-    // - 1. Alright, let's move this player. I need to access game state, which the players could be reading - //
     if (sem_wait(&shm_ss->game_state_mutex) == -1)
         errExit("Unexpected error: failed to wait for game state semaphore");
 
-    // - 2. Okay, I got access to game state. Let's move the player.
-
-    // TODO: no estoy convencido que estos semáforos vayan acá ni se usen así
-    if (sem_wait(&shm_ss->game_state_starvation_mutex) == -1)
-        errExit("Unexpected error: failed to wait for game state starvation semaphore");
-    if (sem_post(&shm_ss->game_state_starvation_mutex) == -1)
-        errExit("Unexpected error: failed to post to game state starvation semaphore");
-
-    // Validar y ejecutar movimiento
     if (interpretMovement(move, shm_bgs, id))
     {
         did_player_move = 1;
     }
 
-    // 3. I'm done moving the player. Let's free up game_state so players can read it again. - //
     if (sem_post(&shm_ss->game_state_mutex) == -1)
         errExit("Unexpected error: failed to post to game state semaphore");
+
+    if (sem_post(&shm_ss->game_state_starvation_mutex) == -1)
+        errExit("Unexpected error: failed to post to game state starvation semaphore");
 
     return did_player_move;
 }
