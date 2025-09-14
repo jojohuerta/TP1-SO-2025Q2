@@ -1,6 +1,7 @@
 # Compiler, flags
 CC = gcc
-CFLAGS = -Wall -g -I$(IDIR) -pthread
+CFLAGS = -I$(IDIR) -pthread
+DFLAGS = -Wall -g -I$(IDIR) -pthread
 
 # Directories
 SRC_DIR = ./src
@@ -17,13 +18,10 @@ MASTER_SRCS = $(MSTR_DIR)/*
 VIEW_SRCS = $(SRC_DIR)/view.c
 PLAYER_SRCS = $(SRC_DIR)/player.c $(SRC_DIR)/playerMovement.c
 
-# Object files
-# OBJS = $(SRCS:.c=.o)
-
-# Dependencies
-#DEPS = shmConstants.h
-
 all: $(TARGET) $(VIEW) $(PLAYER)
+
+debug: CFLAGS = $(DFLAGS)
+debug: $(TARGET) $(VIEW) $(PLAYER)
 
 $(TARGET): $(MASTER_SRCS)
 	$(CC) -o $@ $^ $(CFLAGS) -lm
@@ -41,6 +39,6 @@ pvs:
 	rm -rf salida.log strace_out
 	rm -rf informe_completo.html
 	make clean
-	pvs-studio-analyzer trace -- make all
+	pvs-studio-analyzer trace -- make debug
 	pvs-studio-analyzer analyze -o salida.log
 	plog-converter -a 'GA:1,2,3;64:1,2,3;OP:1,2,3;CS:1,2;MISRA:1,2;AUTOSAR:1' -t fullhtml -o informe_completo.html salida.log
