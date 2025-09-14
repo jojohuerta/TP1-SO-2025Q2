@@ -4,6 +4,11 @@
 #include <sys/types.h>
 #include <semaphore.h>
 
+#ifndef PATH_MAX
+// Usually it is 4096, but in some systems it's undefined
+#define PATH_MAX 4096
+#endif
+
 #define MAX_PLAYERS 9
 #define MAX_PLAYER_NAME_LENGTH 16
 
