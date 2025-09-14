@@ -34,12 +34,8 @@ $(VIEW): $(VIEW_SRCS)
 $(PLAYER): $(PLAYER_SRCS)
 	$(CC) -o $@ $^ $(CFLAGS)
 
-shm-clean:
-#	rm /dev/shm/game_sync /dev/shm/game_state
-
 clean:
 	rm -f $(TARGET) $(VIEW) $(PLAYER)
-#	rm -f /dev/shm/game_sync /dev/shm/game_state
 	
 pvs:
 	rm -rf salida.log strace_out
