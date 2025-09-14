@@ -46,7 +46,6 @@ void signal_handler(int signum)
     exit(EXIT_SUCCESS);
 }
 
-// TODO: SHM OPEN Y UNLINK PERO... Y LOS FILE DESCRIPTORS?
 int main(int argc, char *argv[])
 {
 
@@ -91,7 +90,6 @@ boardGameState *open_shm_bgs(int board_game_state_size)
         errExit("Unexpected error: failed to map game state shared memory");
 
     close(fd_bgs);
-    // global_shm_bgs = shm_bgs;
     return shm_bgs;
 }
 
@@ -106,7 +104,6 @@ syncState *open_shm_ss()
         errExit("Unexpected error: failed to map sync state shared memory");
 
     close(fd_ss);
-    // global_shm_ss = shm_ss;
     return shm_ss;
 }
 
@@ -143,7 +140,7 @@ void draw(boardGameState *shm_bgs)
                 int idx = -val;
                 PlayerColor color = (PlayerColor)(PLY1_RED + idx);
 
-                // Verifico si hay un jugador parado en esta casilla
+                // Verify is there is a player in this position
                 int playerHere = 0;
                 for (int i = 0; i < shm_bgs->playerAmount; i++)
                 {
@@ -180,9 +177,7 @@ void print_state(syncState *shm_ss, boardGameState *shm_bgs)
         if (sem_wait(&shm_ss->view_print_pending_sem) == -1)
             errExit("Unexpected error: failed to wait for print pending semaphore");
 
-    // system("clear");
     printf("\033[3J\033[H"); // Clear screen and move cursor to top-left
-    // fflush(stdout); // Ensure it's displayed immediately
     draw(shm_bgs);
 
     // - Notify printing done - //
@@ -192,9 +187,7 @@ void print_state(syncState *shm_ss, boardGameState *shm_bgs)
 
 void print_game_over_screen(syncState *shm_ss, boardGameState *shm_bgs)
 {
-    // system("clear");
     printf("\033[3J\033[H"); // Clear screen and move cursor to top-left
-    // fflush(stdout); // Ensure it's displayed immediately
     draw(shm_bgs);
     printf("\n");
     printf("\033[1;31m");
@@ -216,7 +209,7 @@ void print_game_over_screen(syncState *shm_ss, boardGameState *shm_bgs)
 
     whoWon(shm_bgs);
 
-    // Como terminamos tenemos que avisarle al master que ya dibujamos la ultima screen
+    // Finished, so we notify the master
     if (sem_post(&shm_ss->view_print_done_sem) == -1)
         errExit("Unexpected error: failed to post to print done semaphore");
 }
@@ -227,7 +220,7 @@ void whoWon(boardGameState *shm_bgs)
     int bestScore = 0;
     int numPlayers = shm_bgs->playerAmount;
 
-    // Buscar el mayor score
+    // Best score
     for (int i = 0; i < numPlayers; i++)
     {
         if (shm_bgs->players[i].score > bestScore)
@@ -246,7 +239,7 @@ void whoWon(boardGameState *shm_bgs)
         }
     }
 
-    // Si hay empatados de score, buscar el menor número de inválidos
+    // If its a draw, search for lowest invalid movements 
     if (topCount > 1)
     {
         int bestInvalids = shm_bgs->players[topScorers[0]].invalidMovementRequests;
@@ -270,7 +263,7 @@ void whoWon(boardGameState *shm_bgs)
             }
         }
 
-        // Resultado final
+        // Print result
         if (winnerCount == 1)
         {
             int idx = winners[0];
