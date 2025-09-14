@@ -11,7 +11,7 @@
 #include "../include/shmConstants.h"
 
 // Valor del espacio libre en la consideracion
-#define SPACE_SCORE_MULTIPLIER 2.14f
+#define SPACE_SCORE_MULTIPLIER 1.5f
 
 typedef struct
 {
