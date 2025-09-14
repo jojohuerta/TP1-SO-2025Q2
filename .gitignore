@@ -59,8 +59,15 @@ dkms.conf
 # VS Code settings
 .vscode/
 
+# PVS Studio
+.PVS-Studio/
+informe_completo.html/
+salida.log
+strace_out
+
 # master, player and view executables
 master
 player
 view
 ChompChamps
+.config/PVS-Studio/PVS-Studio.lic
