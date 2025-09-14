@@ -10,8 +10,8 @@ IDIR = ./include
 
 # Targets
 TARGET = ChompChamps
-VIEW = view
-PLAYER = player
+VIEW = view_g1
+PLAYER = player_g1
 
 # Sources
 MASTER_SRCS = $(MSTR_DIR)/*
