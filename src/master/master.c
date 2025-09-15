@@ -214,10 +214,11 @@ int main(int argc, char *argv[])
 
     // --- Game Start --- //
 
+    printStartScreen(shm_ss, shm_bgs, delay, timeout, seed);
+    
     // - Starting screen - //
     if (view_specified)
     {
-        printStartScreen(shm_ss, shm_bgs, delay, timeout, seed);
         viewPrint(shm_ss);
     }
 
