@@ -1,22 +1,6 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
 
-/* Included in shmConstants.h
-#include <sys/types.h>
-#include <semaphore.h>
-*/
-
-/* Included in errorHandling.h
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <string.h>
-*/
-
-/* Included in maxItoaLength.h
-#include <limits.h>
-*/
-
 #include <sys/mman.h>
 #include <sys/select.h>
 #include <sys/wait.h>
@@ -164,7 +148,6 @@ int main(int argc, char *argv[])
             sprintf(view_path, "%s", optarg);
             break;
         case 'p':
-            // Aquí recogemos manualmente los binarios de jugadores
             while (optind < argc && argv[optind][0] != '-')
             {
                 if (player_count >= MAX_PLAYERS)
@@ -238,18 +221,17 @@ int main(int argc, char *argv[])
     }
 
     // --- Round Robin scheduling among players --- //
-    // Para round robin TODO: no deberia ser SCHED_RR? REVISAR!
-    int turn = 0;
-    int currentPlayerIndex = 0;
+
+    int currentPlayerIndex = rand() % player_count;
     time_t lastValidMov = time(NULL);
     int blockedPlayers = 0;
     fd_set readfds;
 
     while (!shm_bgs->isGameOver && !termination_requested)
     {
-        turn++;
+        printf("currentPlayer: %d", currentPlayerIndex);
 
-        // Veamos si hay timeout
+        // timeout?
         time_t currentTime = time(NULL);
         if (difftime(currentTime, lastValidMov) >= timeout)
         {
@@ -259,19 +241,17 @@ int main(int argc, char *argv[])
         }
         else if (blockedPlayers >= player_count)
         {
-            // Chequeo si todos los jugadores estan bloqueados
+            // All players blocked
             printf("Todos los jugadores se encuentran bloqueados\n");
             shm_bgs->isGameOver = 1;
             break;
         }
 
-        // Nos encargamos de el player que le corresponde el turno
         if (sem_post(&shm_ss->player_can_move_sem[currentPlayerIndex]) == -1)
             errExit("Unexpected error: failed to post to player can move semaphore");
 
-        // Esperar al jugador a que de su respuesta (al que le corresponde el turno)
+        // Waiting player
 
-        // Se limpia el readfds y se asigna al set el que se debe escuchar
         FD_ZERO(&readfds);
         FD_SET(player_paths_fds[currentPlayerIndex], &readfds);
 
@@ -288,7 +268,6 @@ int main(int argc, char *argv[])
 
             if (r <= 0)
             {
-                // El jugador se bloqueo (pipe cerrado o error)
                 shm_bgs->players[currentPlayerIndex].isBlocked = 1;
                 blockedPlayers++;
             }
@@ -299,18 +278,14 @@ int main(int argc, char *argv[])
         }
         else if (readyAmountOfFD == 0)
         {
-            // No se recibio ningun movimiento dentro del timeout de select
-            // El master continua con el siguiente jugador
+            // Go next player
         }
         else
         {
             errExit("Unexpected error: failed to select a player's file descriptor");
         }
 
-        // --- Print and delay --- //
-
         // - Print, notify view process and wait - //
-        // DIBUJARMOS
         if (view_specified)
         {
             view_print(shm_ss);
@@ -327,33 +302,12 @@ int main(int argc, char *argv[])
             currentPlayerIndex = (currentPlayerIndex + 1) % player_count;
             if (currentPlayerIndex == aux)
             {
-                // Todos los jugadores estan bloqueados
+                // All players are blocked
                 break;
             }
         }
     }
 
-    // --- Game over --- //
-
-    // - Print final state - //
-    /* TODO: NO BORRAR
-    if (view_specified)
-    {
-        if(termination_requested) {
-            view_terminate(shm_ss);
-        } else {
-            view_print(shm_ss);
-            view_exit();
-        }
-    }
-
-    if(termination_requested)
-        terminate_all_players(player_count);
-    else
-        exit_all_players(shm_ss, player_count);
-    */
-
-    // TODO: TEMPORAL!!
     if (view_specified)
     {
         view_print(shm_ss);

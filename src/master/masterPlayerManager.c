@@ -84,7 +84,7 @@ void initialize_all_players(int player_count, int board_width, int board_height,
 void spawn_player(boardGameState *shm_bgs, int id, char player_path[PATH_MAX])
 {
 
-    // Centro del tablero
+    // Board center
     float cx = (shm_bgs->boardWidth - 1) / 2.0f;
     float cy = (shm_bgs->boardHeight - 1) / 2.0f;
 
@@ -92,27 +92,25 @@ void spawn_player(boardGameState *shm_bgs, int id, char player_path[PATH_MAX])
 
     if (shm_bgs->playerAmount == 1)
     {
-        // Posicionar en el centro exacto del tablero
         x = (int)(cx + 0.5f);
         y = (int)(cy + 0.5f);
     }
     else
     {
-        // Elegir un radio seguro que no nos acerque demasiado al borde
+        // Not to close to the border
         float margin = 2.0f; // padding
         float max_r_x = cx - margin;
         float max_r_y = cy - margin;
         float radius = fminf(max_r_x, max_r_y); // radio max posible
 
-        // Angulo para el jugador (radianes)
         float angle = (2.0f * M_PI * id) / shm_bgs->playerAmount;
 
-        // Posicion final del jugador en el circulo (0.5f para redondear)
+        // Final position
         x = (int)(cx + radius * cosf(angle) + 0.5f);
         y = (int)(cy + radius * sinf(angle) + 0.5f);
     }
 
-    // Asignar valores al jugador
+    // Init player
     shm_bgs->players[id].x = x;
     shm_bgs->players[id].y = y;
     shm_bgs->players[id].score = 0;
@@ -125,7 +123,7 @@ void spawn_player(boardGameState *shm_bgs, int id, char player_path[PATH_MAX])
     snprintf(player_name, sizeof(player_name), "%s", player_path);
     strcpy(shm_bgs->players[id].playerName, player_name);
 
-    // Marcar posición en el tablero
+    // Update board
     shm_bgs->boardStart[(y * shm_bgs->boardWidth) + x] = (-1) * id;
 }
 
@@ -181,7 +179,7 @@ bool interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player)
     int newX = oldX + dx;
     int newY = oldY + dy;
 
-    // Validacion de si no se fue del tablero
+    // Validate if it out of bounds
     if (newX < 0 || newX >= shm_bgs->boardWidth || newY < 0 || newY >= shm_bgs->boardHeight)
     {
         shm_bgs->players[player].invalidMovementRequests++;
@@ -190,18 +188,17 @@ bool interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player)
 
     int newPosIndex = newX + newY * shm_bgs->boardWidth;
 
-    // Validacion si la nueva casilla esta libre
+    // Validate if the position is free
     if (shm_bgs->boardStart[newPosIndex] <= 0)
     {
         shm_bgs->players[player].invalidMovementRequests++;
         return 0;
     }
 
-    // Si llego hasta aca, el movimiento es válido
-    // Agrego los puntos
+    // Aad score
     shm_bgs->players[player].score += shm_bgs->boardStart[(newY * shm_bgs->boardWidth) + newX];
 
-    // Registrar nuevo movimiento y contarlo como valido
+    // Register new movement
     shm_bgs->players[player].x = newX;
     shm_bgs->players[player].y = newY;
 
@@ -233,26 +230,6 @@ bool move_player(syncState *shm_ss, boardGameState *shm_bgs, int id, char move)
         errExit("Unexpected error: failed to post to game state starvation semaphore");
 
     return did_player_move;
-}
-
-// TODO
-int process_player_turn(syncState *shm_ss, boardGameState *shm_bgs, int id)
-{
-    unsigned char mov;
-    ssize_t r = read(player_pipes[id][0], &mov, 1);
-
-    if (r == 0)
-    {
-        // El jugador se bloqueo (pipe cerrado o error)
-        shm_bgs->players[id].isBlocked = 1;
-        return -1;
-        // blockedPlayers++;
-    }
-    else if (move_player(shm_ss, shm_bgs, id, mov))
-    {
-        return time(NULL);
-    }
-    return r;
 }
 
 void player_exit(syncState *shm_ss, int id)

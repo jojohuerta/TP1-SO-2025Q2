@@ -1,22 +1,6 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
 
-/* Included in shmConstants.h
-#include <sys/types.h>
-#include <semaphore.h>
-*/
-
-/* Included in errorHandling.h
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <string.h>
-*/
-
-/* Included in maxItoaLength.h
-//#include <limits.h>
-*/
-
 #include <sys/wait.h>
 #include <unistd.h>
 #include <signal.h>

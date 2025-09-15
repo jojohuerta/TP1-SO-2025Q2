@@ -22,9 +22,6 @@ void initialize_sync_state(syncState *shm_ss);
 void view_exit();
 void exit_all_players(syncState *shm_ss, int player_count);
 
-// boardGameState *shm_bgs = NULL;
-// syncState *shm_ss = NULL;
-
 int board_game_state_size = 0;
 
 // --- Game state shm --- //
@@ -61,8 +58,6 @@ boardGameState *createShmBoardGameState(int boardWidth, int boardHeight, int pla
 
 void closeShmBoardGameState(boardGameState *shm_bgs)
 {
-
-    // int boardGameStateSize = sizeof(boardGameState) + sizeof(int) * (shm_bgs->boardWidth * shm_bgs->boardHeight);
 
     if (munmap(shm_bgs, BOARD_GAME_STATE_SIZE) == -1)
     {
