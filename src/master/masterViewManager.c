@@ -11,7 +11,7 @@
 
 pid_t viewPid;
 
-void initialize_view(int width, int height, char view_path[], char **environ)
+void initializeView(int width, int height, char view_path[], char **environ)
 {
     // - View process creation - //
     viewPid = fork();
@@ -32,7 +32,7 @@ void initialize_view(int width, int height, char view_path[], char **environ)
     }
 }
 
-void print_start_screen(syncState *shm_ss, boardGameState *shm_bgs, int delay, int timeout, int seed)
+void printStartScreen(syncState *shm_ss, boardGameState *shm_bgs, int delay, int timeout, int seed)
 {
     printf("\033[2J\033[H");
     fflush(stdout);
@@ -68,7 +68,7 @@ void print_start_screen(syncState *shm_ss, boardGameState *shm_bgs, int delay, i
     fflush(stdout);
 }
 
-void view_print(syncState *shm_ss)
+void viewPrint(syncState *shm_ss)
 {
     if (sem_post(&shm_ss->view_print_pending_sem) == -1)
         errExit("Unexpected error: failed to post to print pending semaphore");
@@ -77,7 +77,7 @@ void view_print(syncState *shm_ss)
         errExit("Unexpected error: failed to wait for print done semaphore");
 }
 
-void view_exit()
+void viewExit()
 {
     // View process should exit by itself, so master shouldn't terminate it.
     int status;
@@ -87,7 +87,7 @@ void view_exit()
         printf("View process exited with code (%d)", WTERMSIG(status));
 }
 
-void view_terminate()
+void viewTerminate()
 {
     kill(viewPid, SIGTERM);
     if (waitpid(viewPid, NULL, 0) == -1)

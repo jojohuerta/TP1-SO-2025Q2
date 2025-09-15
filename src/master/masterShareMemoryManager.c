@@ -16,11 +16,11 @@
 
 #define BOARD_GAME_STATE_SIZE board_game_state_size
 
-void initialize_game_state(boardGameState *shm_bgs, int boardWidth, int boardHeight, int playerAmount, int seed);
-void initialize_sync_state(syncState *shm_ss);
+void initializeGameState(boardGameState *shm_bgs, int boardWidth, int boardHeight, int playerAmount, int seed);
+void initializeSyncState(syncState *shm_ss);
 
-void view_exit();
-void exit_all_players(syncState *shm_ss, int player_count);
+void viewExit();
+void exitAllPlayers(syncState *shm_ss, int player_count);
 
 int board_game_state_size = 0;
 
@@ -51,7 +51,7 @@ boardGameState *createShmBoardGameState(int boardWidth, int boardHeight, int pla
     close(shm_fd);
 
     // - Initialize shm - //
-    initialize_game_state(shm_bgs, boardWidth, boardHeight, playerAmount, seed);
+    initializeGameState(shm_bgs, boardWidth, boardHeight, playerAmount, seed);
 
     return shm_bgs;
 }
@@ -93,7 +93,7 @@ syncState *createShmSyncState()
     close(shm_fd);
 
     // - Initialize shm - //
-    initialize_sync_state(shm_ss);
+    initializeSyncState(shm_ss);
 
     // local_shm_ss = shm_addr;
     return shm_ss;
@@ -132,7 +132,7 @@ void closeShmSyncState(syncState *shm_ss)
     }
 }
 
-void initialize_game_state(boardGameState *shm_bgs, int boardWidth, int boardHeight, int playerAmount, int seed)
+void initializeGameState(boardGameState *shm_bgs, int boardWidth, int boardHeight, int playerAmount, int seed)
 {
     shm_bgs->boardWidth = boardWidth;
     shm_bgs->boardHeight = boardHeight;
@@ -148,7 +148,7 @@ void initialize_game_state(boardGameState *shm_bgs, int boardWidth, int boardHei
     }
 }
 
-void initialize_sync_state(syncState *shm_ss)
+void initializeSyncState(syncState *shm_ss)
 {
     if (sem_init(&shm_ss->view_print_pending_sem, 1, 0) == -1)
         errExit("Unexpected error: failed to initialize print pending semaphore");

@@ -37,20 +37,20 @@ syncState *createShmSyncState(void);
 void closeShmSyncState(syncState *shmp);
 
 // masterViewManager.c functions
-void initialize_view(int width, int height, char view_path[], char **environ);
-void print_start_screen(syncState *shm_ss, boardGameState *shm_bgs, int delay, int timeout, int seed);
-void view_print(syncState *shm_ss);
-void view_exit();
-void view_terminate();
+void initializeView(int width, int height, char view_path[], char **environ);
+void printStartScreen(syncState *shm_ss, boardGameState *shm_bgs, int delay, int timeout, int seed);
+void viewPrint(syncState *shm_ss);
+void viewExit();
+void viewTerminate();
 
 // masterPlayerManager.c functions
-void initialize_all_players(int player_count, int board_width, int board_height, char player_paths[][4096], char **environ, int player_paths_fds[MAX_PLAYERS]);
-void spawn_all_players(boardGameState *shm_bgs, char player_paths[][PATH_MAX]);
-bool move_player(syncState *shm_ss, boardGameState *shm_bgs, int id, char move);
-void exit_all_players(syncState *shm_ss, int player_count);
-void terminate_all_players(int player_count);
+void initializeAllPlayers(int player_count, int board_width, int board_height, char player_paths[][4096], char **environ, int player_paths_fds[MAX_PLAYERS]);
+void spawnAllPlayers(boardGameState *shm_bgs, char player_paths[][PATH_MAX]);
+bool movePlayer(syncState *shm_ss, boardGameState *shm_bgs, int id, char move);
+void exitAllPlayers(syncState *shm_ss, int player_count);
+void terminateAllPlayers(int player_count);
 
-void setup_sig_handler();
+void setupSigHandler();
 
 sig_atomic_t termination_requested = 0;
 
@@ -58,15 +58,15 @@ sig_atomic_t termination_requested = 0;
 boardGameState *glob_shm_bgs;
 syncState *glob_shm_ss;
 
-void signal_handler(int signum)
+void signalHandler(int signum)
 {
     /* TODO: NO BORRAR
     if(signum == SIGTERM || signum == SIGINT)
         termination_requested = 1;
     */
     // TODO: TEMPORAL!!
-    view_exit();
-    exit_all_players(glob_shm_ss, glob_shm_bgs->playerAmount);
+    viewExit();
+    exitAllPlayers(glob_shm_ss, glob_shm_bgs->playerAmount);
     closeShmBoardGameState(glob_shm_bgs);
     closeShmSyncState(glob_shm_ss);
 
@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
     }
 
     // --- Signal handler setup --- //
-    setup_sig_handler();
+    setupSigHandler();
 
     // --- Shared memory init --- //
     boardGameState *shm_bgs = createShmBoardGameState(width, height, player_count, seed);
@@ -200,24 +200,24 @@ int main(int argc, char *argv[])
     bool view_specified = strcmp(view_path, "") != 0;
     if (view_specified)
     {
-        initialize_view(width, height, view_path, environ);
+        initializeView(width, height, view_path, environ);
     }
 
     // --- Player processes init --- //
 
     int player_paths_fds[player_count];
-    initialize_all_players(player_count, width, height, player_bin_paths, environ, player_paths_fds);
+    initializeAllPlayers(player_count, width, height, player_bin_paths, environ, player_paths_fds);
 
     // --- Spawn players --- //
-    spawn_all_players(shm_bgs, player_bin_paths);
+    spawnAllPlayers(shm_bgs, player_bin_paths);
 
     // --- Game Start --- //
 
     // - Starting screen - //
     if (view_specified)
     {
-        print_start_screen(shm_ss, shm_bgs, delay, timeout, seed);
-        view_print(shm_ss);
+        printStartScreen(shm_ss, shm_bgs, delay, timeout, seed);
+        viewPrint(shm_ss);
     }
 
     // --- Round Robin scheduling among players --- //
@@ -229,8 +229,6 @@ int main(int argc, char *argv[])
 
     while (!shm_bgs->isGameOver && !termination_requested)
     {
-        printf("currentPlayer: %d", currentPlayerIndex);
-
         // timeout?
         time_t currentTime = time(NULL);
         if (difftime(currentTime, lastValidMov) >= timeout)
@@ -271,7 +269,7 @@ int main(int argc, char *argv[])
                 shm_bgs->players[currentPlayerIndex].isBlocked = 1;
                 blockedPlayers++;
             }
-            else if (move_player(shm_ss, shm_bgs, currentPlayerIndex, mov))
+            else if (movePlayer(shm_ss, shm_bgs, currentPlayerIndex, mov))
             {
                 lastValidMov = time(NULL);
             }
@@ -288,7 +286,7 @@ int main(int argc, char *argv[])
         // - Print, notify view process and wait - //
         if (view_specified)
         {
-            view_print(shm_ss);
+            viewPrint(shm_ss);
         }
 
         // - Delay - //
@@ -310,10 +308,10 @@ int main(int argc, char *argv[])
 
     if (view_specified)
     {
-        view_print(shm_ss);
-        view_exit();
+        viewPrint(shm_ss);
+        viewExit();
     }
-    exit_all_players(shm_ss, player_count);
+    exitAllPlayers(shm_ss, player_count);
 
     // - Shared memory close - //
     closeShmBoardGameState(shm_bgs);
@@ -322,11 +320,11 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-void setup_sig_handler()
+void setupSigHandler()
 {
     // --- Signal handler setup --- //
     struct sigaction sa;
-    sa.sa_handler = signal_handler;
+    sa.sa_handler = signalHandler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
 

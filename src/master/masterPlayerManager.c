@@ -21,7 +21,7 @@
 int player_pipes[MAX_PLAYERS][2]; // As master, I will use the read end ([0]).
 pid_t player_pids[MAX_PLAYERS];
 
-int initialize_player(int id, int board_width, int board_height, char player_path[PATH_MAX], char **environ)
+int initializePlayer(int id, int board_width, int board_height, char player_path[PATH_MAX], char **environ)
 {
     // - Master-player pipes creation - //
     if (pipe(player_pipes[id]) == -1)
@@ -73,15 +73,15 @@ int initialize_player(int id, int board_width, int board_height, char player_pat
     return player_pipes[id][0];
 }
 
-void initialize_all_players(int player_count, int board_width, int board_height, char player_paths[][PATH_MAX], char **environ, int player_pipes_fds[MAX_PLAYERS])
+void initializeAllPlayers(int player_count, int board_width, int board_height, char player_paths[][PATH_MAX], char **environ, int player_pipes_fds[MAX_PLAYERS])
 {
     for (int i = 0; i < player_count; i++)
     {
-        player_pipes_fds[i] = initialize_player(i, board_width, board_height, player_paths[i], environ);
+        player_pipes_fds[i] = initializePlayer(i, board_width, board_height, player_paths[i], environ);
     }
 }
 
-void spawn_player(boardGameState *shm_bgs, int id, char player_path[PATH_MAX])
+void spawnPlayer(boardGameState *shm_bgs, int id, char player_path[PATH_MAX])
 {
 
     // Board center
@@ -127,11 +127,11 @@ void spawn_player(boardGameState *shm_bgs, int id, char player_path[PATH_MAX])
     shm_bgs->boardStart[(y * shm_bgs->boardWidth) + x] = (-1) * id;
 }
 
-void spawn_all_players(boardGameState *shm_bgs, char player_paths[][PATH_MAX])
+void spawnAllPlayers(boardGameState *shm_bgs, char player_paths[][PATH_MAX])
 {
     for (int i = 0; i < shm_bgs->playerAmount; i++)
     {
-        spawn_player(shm_bgs, i, player_paths[i]);
+        spawnPlayer(shm_bgs, i, player_paths[i]);
     }
 }
 
@@ -207,7 +207,7 @@ bool interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player)
     return 1;
 }
 
-bool move_player(syncState *shm_ss, boardGameState *shm_bgs, int id, char move)
+bool movePlayer(syncState *shm_ss, boardGameState *shm_bgs, int id, char move)
 {
 
     bool did_player_move = 0;
@@ -232,7 +232,7 @@ bool move_player(syncState *shm_ss, boardGameState *shm_bgs, int id, char move)
     return did_player_move;
 }
 
-void player_exit(syncState *shm_ss, int id)
+void playerExit(syncState *shm_ss, int id)
 {
     close(player_pipes[id][0]);
     // Wake up each player and wait until it exits
@@ -245,15 +245,15 @@ void player_exit(syncState *shm_ss, int id)
         printf("Player %d process exited with code (%d)", id, WTERMSIG(status));
 }
 
-void exit_all_players(syncState *shm_ss, int player_count)
+void exitAllPlayers(syncState *shm_ss, int player_count)
 {
     for (int i = 0; i < player_count; i++)
     {
-        player_exit(shm_ss, i);
+        playerExit(shm_ss, i);
     }
 }
 
-void player_terminate(int id)
+void playerTerminate(int id)
 {
     close(player_pipes[id][0]);
     kill(player_pids[id], SIGTERM);
@@ -261,10 +261,10 @@ void player_terminate(int id)
         errExit("Unexpected error: failed to wait for view process to end");
 }
 
-void terminate_all_players(int player_count)
+void terminateAllPlayers(int player_count)
 {
     for (int i = 0; i < player_count; i++)
     {
-        player_terminate(i);
+        playerTerminate(i);
     }
 }

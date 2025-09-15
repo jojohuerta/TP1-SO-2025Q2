@@ -9,20 +9,20 @@
 #include "../include/shmConstants.h"
 #include "../include/errorHandling.h"
 
-void setup_sig_handler();
+void setupSigHandler();
 
-boardGameState *open_shm_bgs(int board_game_state_size);
-syncState *open_shm_ss();
+boardGameState *openShmBgs(int board_game_state_size);
+syncState *openShmSs();
 void unmapShm(boardGameState *shm_bgs, syncState *shm_ss, int board_game_state_size);
 
-int get_id(boardGameState *shm_bgs);
+int getId(boardGameState *shm_bgs);
 
 // playerMovement.c functions
 unsigned char playerMovAnalysis(int localBoardState[], unsigned short width, unsigned short height, int playerID, unsigned short playerX, unsigned short playerY);
 
 sig_atomic_t termination_requested = 0;
 
-void signal_handler(int signum)
+void signalHandler(int signum)
 {
     if (signum == SIGTERM || signum == SIGINT)
         termination_requested = 1;
@@ -42,14 +42,14 @@ int main(int argc, char *argv[])
     int board_game_state_size = sizeof(boardGameState) + sizeof(int) * (width * height);
 
     // --- shm connection  --- //
-    boardGameState *shm_bgs = open_shm_bgs(board_game_state_size);
-    syncState *shm_ss = open_shm_ss();
+    boardGameState *shm_bgs = openShmBgs(board_game_state_size);
+    syncState *shm_ss = openShmSs();
 
     // --- Signal handler setup --- //
-    setup_sig_handler();
+    setupSigHandler();
 
     // --- Initialize --- //
-    int playerID = get_id(shm_bgs);
+    int playerID = getId(shm_bgs);
 
     if (playerID == -1)
         errExit("Unexpected error: player process not found");
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
     exit(EXIT_SUCCESS);
 }
 
-boardGameState *open_shm_bgs(int board_game_state_size)
+boardGameState *openShmBgs(int board_game_state_size)
 {
     int fd_bgs = shm_open(GAME_STATE_PATH, O_RDONLY, 0);
     if (fd_bgs == -1)
@@ -135,7 +135,7 @@ boardGameState *open_shm_bgs(int board_game_state_size)
     return shm_bgs;
 }
 
-syncState *open_shm_ss()
+syncState *openShmSs()
 {
     int fd_ss = shm_open(SYNC_STATE_PATH, O_RDWR, 0);
     if (fd_ss == -1)
@@ -149,7 +149,7 @@ syncState *open_shm_ss()
     return shm_ss;
 }
 
-int get_id(boardGameState *shm_bgs)
+int getId(boardGameState *shm_bgs)
 {
     for (int i = 0; i < shm_bgs->playerAmount; i++)
     {
@@ -161,11 +161,11 @@ int get_id(boardGameState *shm_bgs)
     return -1;
 }
 
-void setup_sig_handler()
+void setupSigHandler()
 {
     // --- Signal handler setup --- //
     struct sigaction sa;
-    sa.sa_handler = signal_handler;
+    sa.sa_handler = signalHandler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
     if (sigaction(SIGTERM, &sa, NULL) == -1 || sigaction(SIGINT, &sa, NULL) == -1)
