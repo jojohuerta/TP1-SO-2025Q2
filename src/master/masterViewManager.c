@@ -9,15 +9,12 @@
 #include "../include/errorHandling.h"
 #include "../include/maxItoaLength.h"
 
-void signalHandler(int signum);
 void setupSigHandler();
 
-pid_t viewPid;
-
-void initializeView(int width, int height, char view_path[], char **environ)
+pid_t initializeView(int width, int height, char view_path[], char **environ)
 {
     // - View process creation - //
-    viewPid = fork();
+    pid_t viewPid = fork();
     if (viewPid == -1)
         errExit("Unexpected error: failed to create view process");
 
@@ -34,6 +31,7 @@ void initializeView(int width, int height, char view_path[], char **environ)
             errExit("Unexpected error: failed to execute view binary");
         setupSigHandler();
     }
+    return viewPid;
 }
 
 void printStartScreen(syncState *shm_ss, boardGameState *shm_bgs, int delay, int timeout, int seed)
@@ -81,7 +79,7 @@ void viewPrint(syncState *shm_ss)
         errExit("Unexpected error: failed to wait for print done semaphore");
 }
 
-void viewExit()
+void viewExit(pid_t viewPid)
 {
     // View process should exit by itself, so master shouldn't terminate it.
     int status;
@@ -91,7 +89,7 @@ void viewExit()
         printf("View process exited with code (%d)", WTERMSIG(status));
 }
 
-void viewTerminate()
+void viewTerminate(pid_t viewPid)
 {
     kill(viewPid, SIGTERM);
     if (waitpid(viewPid, NULL, 0) == -1)

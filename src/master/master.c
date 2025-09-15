@@ -37,14 +37,14 @@ syncState *createShmSyncState(void);
 void closeShmSyncState(syncState *shmp);
 
 // masterViewManager.c functions
-void initializeView(int width, int height, char view_path[], char **environ);
+pid_t initializeView(int width, int height, char view_path[], char **environ);
 void printStartScreen(syncState *shm_ss, boardGameState *shm_bgs, int delay, int timeout, int seed);
 void viewPrint(syncState *shm_ss);
-void viewExit();
-void viewTerminate();
+void viewExit(pid_t viewPid);
+void viewTerminate(pid_t viewPid);
 
 // masterPlayerManager.c functions
-void initializeAllPlayers(int player_count, int board_width, int board_height, char player_paths[][4096], char **environ, int player_paths_fds[MAX_PLAYERS]);
+void initializeAllPlayers(int player_count, int board_width, int board_height, char player_paths[][PATH_MAX], char **environ, int player_paths_fds[MAX_PLAYERS]);
 void spawnAllPlayers(boardGameState *shm_bgs, char player_paths[][PATH_MAX]);
 bool movePlayer(syncState *shm_ss, boardGameState *shm_bgs, int id, char move);
 void exitAllPlayers(syncState *shm_ss, int player_count);
@@ -181,11 +181,12 @@ int main(int argc, char *argv[])
     syncState *shm_ss = createShmSyncState();
 
     // --- View process init --- //
-    bool view_specified = strcmp(view_path, "") != 0;
-    if (view_specified)
+    pid_t viewPid = 0;
+    if (strcmp(view_path, "") != 0)
     {
-        initializeView(width, height, view_path, environ);
+        viewPid = initializeView(width, height, view_path, environ);
     }
+    bool view_specified = viewPid == 0? 0 : 1;
 
     // --- Player processes init --- //
 
@@ -293,12 +294,12 @@ int main(int argc, char *argv[])
     {
         if (termination_requested)
         {
-            viewTerminate();
+            viewTerminate(viewPid);
         }
         else
         {
             viewPrint(shm_ss);
-            viewExit();
+            viewExit(viewPid);
         }
     }
 
