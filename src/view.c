@@ -11,18 +11,7 @@
 #include "../include/shmConstants.h"
 #include "../include/errorHandling.h"
 
-typedef enum
-{
-    PLY1_RED = 31,
-    PLY2_BLUE = 34,
-    PLY3_GREEN = 32,
-    PLY4_YELLOW = 33,
-    PLY5_ORANGE = 93,
-    PLY6_PURPLE = 95,
-    PLY7_CYAN = 36,
-    PLY8_MAGENTA = 35,
-    PLY9_BLACK = 30
-} PlayerColor;
+#define RED 31
 
 boardGameState *openShmBgs(int board_game_state_size);
 syncState *openShmSs();
@@ -113,7 +102,7 @@ void draw(boardGameState *shm_bgs)
             if (val <= 0)
             {
                 int idx = -val;
-                PlayerColor color = (PlayerColor)(PLY1_RED + idx);
+                int color = RED + idx;
 
                 // Verify is there is a player in this position
                 int playerHere = 0;
