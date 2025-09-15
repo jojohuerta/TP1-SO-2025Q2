@@ -8,7 +8,6 @@
 #include <limits.h>
 #include <string.h>
 #include <signal.h>
-#include <time.h>
 
 #include "../include/shmConstants.h"
 #include "../include/errorHandling.h"
@@ -18,7 +17,6 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-void signalHandler(int signum);
 void setupSigHandler();
 
 int player_pipes[MAX_PLAYERS][2]; // As master, I will use the read end ([0]).
