@@ -31,7 +31,6 @@ void setupSigHandler();
 void draw(boardGameState *shm_bgs);
 void printState(syncState *shm_ss, boardGameState *shm_bgs);
 void printGameOverScreen(syncState *shm_ss, boardGameState *shm_bgs);
-void whoWon(boardGameState *shm_bgs);
 
 void unmapShm(boardGameState *shm_bgs, syncState *shm_ss, int board_game_state_size);
 
@@ -197,125 +196,10 @@ void printGameOverScreen(syncState *shm_ss, boardGameState *shm_bgs)
     printf(" #     # #     # #     # #             #      #    # #    #       #     #\n");
     printf("  #####  #     # #     # #######       ########     #     ####### #      #\n");
     printf("\033[0m");
-    printf("PLAYER  POINTS  INVALID-MOVES  VALID-MOVEMENTS BLOCKED X   Y\n");
-    for (int i = 0; i < shm_bgs->playerAmount; i++)
-    {
-        printf("%-8s %-12u %-15u %-11u %-4hhu %-3hu %-3hu\n", shm_bgs->players[i].playerName, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests,
-               shm_bgs->players[i].validMovementRequests, shm_bgs->players[i].isBlocked, shm_bgs->players[i].x, shm_bgs->players[i].y);
-    }
-    printf("\n");
-
-    whoWon(shm_bgs);
-
+    
     // Finished, so we notify the master
     if (sem_post(&shm_ss->view_print_done_sem) == -1)
         errExit("Unexpected error: failed to post to print done semaphore");
-}
-
-void whoWon(boardGameState *shm_bgs)
-{
-
-    int bestScore = 0;
-    int numPlayers = shm_bgs->playerAmount;
-
-    // Best score
-    for (int i = 0; i < numPlayers; i++)
-    {
-        if (shm_bgs->players[i].score > bestScore)
-        {
-            bestScore = shm_bgs->players[i].score;
-        }
-    }
-
-    int topScorers[numPlayers];
-    int topCount = 0;
-    for (int i = 0; i < numPlayers; i++)
-    {
-        if (shm_bgs->players[i].score == bestScore)
-        {
-            topScorers[topCount++] = i;
-        }
-    }
-
-    // If its a draw, search for lowest invalid movements
-    if (topCount > 1)
-    {
-        int least_valid_moves = shm_bgs->players[topScorers[0]].validMovementRequests;
-        for (int i = 1; i < topCount; i++)
-        {
-            int id = topScorers[i];
-            if (shm_bgs->players[id].validMovementRequests < least_valid_moves)
-            {
-                least_valid_moves = shm_bgs->players[id].validMovementRequests;
-            }
-        }
-        int first_criteria_winners[topCount];
-        int first_criteria_winner_count = 0;
-        for (int i = 0; i < topCount; i++)
-        {
-            int id = topScorers[i];
-            if (shm_bgs->players[id].validMovementRequests == least_valid_moves)
-                first_criteria_winners[first_criteria_winner_count++] = id;
-        }
-
-        if (first_criteria_winner_count > 1)
-        {
-            int bestInvalids = shm_bgs->players[first_criteria_winners[0]].invalidMovementRequests;
-            for (int j = 1; j < first_criteria_winner_count; j++)
-            {
-                int idx = first_criteria_winners[j];
-                if (shm_bgs->players[idx].invalidMovementRequests < bestInvalids)
-                {
-                    bestInvalids = shm_bgs->players[idx].invalidMovementRequests;
-                }
-            }
-
-            int second_criteria_winners[first_criteria_winner_count];
-            int second_criteria_winner_count = 0;
-            for (int j = 0; j < first_criteria_winner_count; j++)
-            {
-                int idx = first_criteria_winners[j];
-                if (shm_bgs->players[idx].invalidMovementRequests == bestInvalids)
-                {
-                    second_criteria_winners[second_criteria_winner_count++] = idx;
-                }
-            }
-            if (second_criteria_winner_count == 1)
-            {
-                int idx = second_criteria_winners[0];
-                printf("Tenemos un empate por puntos %d y en movimientos válidos %d.\nDecidiremos el ganador por quien tiene menos movimientos inválidos:\n", bestScore, least_valid_moves);
-                printf("🏆 El \033[4;32mganador\033[0m es el Jugador %d con solo %d movimientos inválidos.\n",
-                       idx + 1, bestInvalids);
-            }
-            else
-            {
-                printf("🤝 Empate entre %d jugadores: ", second_criteria_winner_count);
-                for (int j = 0; j < second_criteria_winner_count; j++)
-                {
-                    printf("Jugador %d", second_criteria_winners[j] + 1);
-                    if (j < second_criteria_winner_count - 1)
-                    {
-                        printf(", ");
-                    }
-                }
-                printf(". Todos con %d puntos, %d movimientos válidos y %d movimientos inválidos.\n", bestScore, least_valid_moves, bestInvalids);
-            }
-        }
-        else
-        {
-            int idx = first_criteria_winners[0];
-            printf("Tenemos un empate por puntos %d.\nDecidiremos el ganador por quien tiene menos movimientos válidos:\n", bestScore);
-            printf("🏆 El \033[4;32mganador\033[0m es el Jugador %d con solo %d movimientos inválidos.\n",
-                   idx + 1, least_valid_moves);
-        }
-    }
-    else
-    {
-        int idx = topScorers[0];
-        printf("🏆 El \033[4;32mganador\033[0m es el Jugador %d con %d puntos!\n",
-               idx + 1, bestScore);
-    }
-    printf("\n");
 }
 
 void unmapShm(boardGameState *shm_bgs, syncState *shm_ss, int board_game_state_size)
