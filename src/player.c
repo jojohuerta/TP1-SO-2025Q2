@@ -9,8 +9,6 @@
 #include "../include/shmConstants.h"
 #include "../include/errorHandling.h"
 
-void setupSigHandler();
-
 boardGameState *openShmBgs(int board_game_state_size);
 syncState *openShmSs();
 void unmapShm(boardGameState *shm_bgs, syncState *shm_ss, int board_game_state_size);
@@ -21,14 +19,6 @@ int getId(boardGameState *shm_bgs);
 unsigned char playerMovAnalysis(int localBoardState[], unsigned short width, unsigned short height, int playerID, unsigned short playerX, unsigned short playerY);
 
 sig_atomic_t termination_requested = 0;
-
-void signalHandler(int signum)
-{
-    if (signum == SIGTERM || signum == SIGINT)
-        termination_requested = 1;
-
-    exit(EXIT_SUCCESS);
-}
 
 int main(int argc, char *argv[])
 {
@@ -44,9 +34,6 @@ int main(int argc, char *argv[])
     // --- shm connection  --- //
     boardGameState *shm_bgs = openShmBgs(board_game_state_size);
     syncState *shm_ss = openShmSs();
-
-    // --- Signal handler setup --- //
-    setupSigHandler();
 
     // --- Initialize --- //
     int playerID = getId(shm_bgs);
@@ -68,7 +55,6 @@ int main(int argc, char *argv[])
         if (sem_wait(&shm_ss->game_state_starvation_mutex) == -1)
             errExit("Unexpected error: failed to wait for game state starvation semaphore");
 
-
         if (sem_wait(&shm_ss->reader_count_mutex) == -1)
             errExit("Unexpected error: failed to wait for readers count semaphore");
 
@@ -87,7 +73,7 @@ int main(int argc, char *argv[])
 
         if (sem_wait(&shm_ss->reader_count_mutex) == -1)
             errExit("Unexpected error: failed to wait for readers count semaphore");
-        
+
         if (shm_ss->reader_count-- == 1)
         {
             if (sem_post(&shm_ss->game_state_mutex) == -1)
@@ -118,7 +104,7 @@ int main(int argc, char *argv[])
     close(1);
     unmapShm(shm_bgs, shm_ss, board_game_state_size);
 
-    exit(EXIT_SUCCESS);
+    return 0;
 }
 
 boardGameState *openShmBgs(int board_game_state_size)
@@ -159,17 +145,6 @@ int getId(boardGameState *shm_bgs)
         }
     }
     return -1;
-}
-
-void setupSigHandler()
-{
-    // --- Signal handler setup --- //
-    struct sigaction sa;
-    sa.sa_handler = signalHandler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    if (sigaction(SIGTERM, &sa, NULL) == -1 || sigaction(SIGINT, &sa, NULL) == -1)
-        errExit("Unexpected error: failed to setup signal handler");
 }
 
 void unmapShm(boardGameState *shm_bgs, syncState *shm_ss, int board_game_state_size)

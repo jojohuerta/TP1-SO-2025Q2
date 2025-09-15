@@ -26,7 +26,6 @@ typedef enum
 
 boardGameState *openShmBgs(int board_game_state_size);
 syncState *openShmSs();
-void setupSigHandler();
 
 void draw(boardGameState *shm_bgs);
 void printState(syncState *shm_ss, boardGameState *shm_bgs);
@@ -35,14 +34,6 @@ void printGameOverScreen(syncState *shm_ss, boardGameState *shm_bgs);
 void unmapShm(boardGameState *shm_bgs, syncState *shm_ss, int board_game_state_size);
 
 sig_atomic_t termination_requested = 0;
-
-void signalHandler(int signum)
-{
-    if (signum == SIGTERM || signum == SIGINT)
-        termination_requested = 1;
-
-    exit(EXIT_SUCCESS);
-}
 
 int main(int argc, char *argv[])
 {
@@ -58,9 +49,6 @@ int main(int argc, char *argv[])
     // --- shm connection  --- //
     boardGameState *shm_bgs = openShmBgs(board_game_state_size);
     syncState *shm_ss = openShmSs();
-
-    // --- Signal handler setup --- //
-    setupSigHandler();
 
     // --- Print state during game --- //
     while (!shm_bgs->isGameOver && !termination_requested)
@@ -103,17 +91,6 @@ syncState *openShmSs()
 
     close(fd_ss);
     return shm_ss;
-}
-
-void setupSigHandler()
-{
-    // --- Signal handler setup --- //
-    struct sigaction sa;
-    sa.sa_handler = signalHandler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    if (sigaction(SIGTERM, &sa, NULL) == -1 || sigaction(SIGINT, &sa, NULL) == -1)
-        errExit("Unexpected error: failed to setup signal handler");
 }
 
 void draw(boardGameState *shm_bgs)
@@ -196,7 +173,7 @@ void printGameOverScreen(syncState *shm_ss, boardGameState *shm_bgs)
     printf(" #     # #     # #     # #             #      #    # #    #       #     #\n");
     printf("  #####  #     # #     # #######       ########     #     ####### #      #\n");
     printf("\033[0m");
-    
+
     // Finished, so we notify the master
     if (sem_post(&shm_ss->view_print_done_sem) == -1)
         errExit("Unexpected error: failed to post to print done semaphore");

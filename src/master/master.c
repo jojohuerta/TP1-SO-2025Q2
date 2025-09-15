@@ -55,23 +55,10 @@ void whoWon(boardGameState *shm_bgs);
 
 sig_atomic_t termination_requested = 0;
 
-// TODO: TEMPORAL!!
-boardGameState *glob_shm_bgs;
-syncState *glob_shm_ss;
-
 void signalHandler(int signum)
 {
-    /* TODO: NO BORRAR
-    if(signum == SIGTERM || signum == SIGINT)
+    if (signum == SIGTERM || signum == SIGINT)
         termination_requested = 1;
-    */
-    // TODO: TEMPORAL!!
-    viewExit();
-    exitAllPlayers(glob_shm_ss, glob_shm_bgs->playerAmount);
-    closeShmBoardGameState(glob_shm_bgs);
-    closeShmSyncState(glob_shm_ss);
-
-    exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[])
@@ -193,10 +180,6 @@ int main(int argc, char *argv[])
     boardGameState *shm_bgs = createShmBoardGameState(width, height, player_count, seed);
     syncState *shm_ss = createShmSyncState();
 
-    // TODO: TEMPORAL!!!
-    glob_shm_bgs = shm_bgs;
-    glob_shm_ss = shm_ss;
-
     // --- View process init --- //
     bool view_specified = strcmp(view_path, "") != 0;
     if (view_specified)
@@ -213,10 +196,8 @@ int main(int argc, char *argv[])
     spawnAllPlayers(shm_bgs, player_bin_paths);
 
     // --- Game Start --- //
-
-    printStartScreen(shm_ss, shm_bgs, delay, timeout, seed);
-    
     // - Starting screen - //
+    printStartScreen(shm_ss, shm_bgs, delay, timeout, seed);
     if (view_specified)
     {
         viewPrint(shm_ss);
@@ -310,11 +291,24 @@ int main(int argc, char *argv[])
 
     if (view_specified)
     {
-        viewPrint(shm_ss);
-        viewExit();
+        if (termination_requested)
+        {
+            viewTerminate();
+        }
+        else
+        {
+            viewPrint(shm_ss);
+            viewExit();
+        }
     }
-    whoWon(shm_bgs);
-    exitAllPlayers(shm_ss, player_count);
+
+    if (termination_requested)
+        terminateAllPlayers(player_count);
+    else
+    {
+        whoWon(shm_bgs);
+        exitAllPlayers(shm_ss, player_count);
+    }
 
     // - Shared memory close - //
     closeShmBoardGameState(shm_bgs);
@@ -330,8 +324,6 @@ void setupSigHandler()
     sa.sa_handler = signalHandler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
-
-    // memset(&sa, 0, sizeof(sa));
     if (sigaction(SIGTERM, &sa, NULL) == -1 || sigaction(SIGINT, &sa, NULL) == -1)
         errExit("Unexpected error: failed to setup signal handler");
 }
@@ -447,5 +439,4 @@ void whoWon(boardGameState *shm_bgs)
                shm_bgs->players[i].validMovementRequests, shm_bgs->players[i].isBlocked, shm_bgs->players[i].x, shm_bgs->players[i].y);
     }
     printf("\n");
-
 }

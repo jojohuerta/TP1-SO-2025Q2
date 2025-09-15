@@ -18,6 +18,9 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+void signalHandler(int signum);
+void setupSigHandler();
+
 int player_pipes[MAX_PLAYERS][2]; // As master, I will use the read end ([0]).
 pid_t player_pids[MAX_PLAYERS];
 
@@ -58,6 +61,8 @@ int initializePlayer(int id, int board_width, int board_height, char player_path
 
         if (execve(player_path, player_args, environ) == -1)
             errExit("Unexpected error: failed to execute player binary");
+
+        setupSigHandler();
     }
     else
     {

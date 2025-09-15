@@ -9,6 +9,9 @@
 #include "../include/errorHandling.h"
 #include "../include/maxItoaLength.h"
 
+void signalHandler(int signum);
+void setupSigHandler();
+
 pid_t viewPid;
 
 void initializeView(int width, int height, char view_path[], char **environ)
@@ -29,6 +32,7 @@ void initializeView(int width, int height, char view_path[], char **environ)
     {
         if (execve(view_path, viewArgs, environ) == -1)
             errExit("Unexpected error: failed to execute view binary");
+        setupSigHandler();
     }
 }
 
