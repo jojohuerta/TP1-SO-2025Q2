@@ -1,22 +1,6 @@
 // This is a personal academic project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
 
-/* Included in shmConstants.h
-#include <sys/types.h>
-#include <semaphore.h>
-*/
-
-/* Included in errorHandling.h
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <string.h>
-*/
-
-/* Included in maxItoaLength.h
-#include <limits.h>
-*/
-
 #include <sys/mman.h>
 #include <sys/select.h>
 #include <sys/wait.h>
@@ -53,42 +37,28 @@ syncState *createShmSyncState(void);
 void closeShmSyncState(syncState *shmp);
 
 // masterViewManager.c functions
-void initialize_view(int width, int height, char view_path[], char **environ);
-void print_start_screen(syncState *shm_ss, boardGameState *shm_bgs, int delay, int timeout, int seed);
-void view_print(syncState *shm_ss);
-void view_exit();
-void view_terminate();
+void initializeView(int width, int height, char view_path[], char **environ);
+void printStartScreen(syncState *shm_ss, boardGameState *shm_bgs, int delay, int timeout, int seed);
+void viewPrint(syncState *shm_ss);
+void viewExit();
+void viewTerminate();
 
 // masterPlayerManager.c functions
-void initialize_all_players(int player_count, int board_width, int board_height, char player_paths[][4096], char **environ);
-void spawn_all_players(boardGameState *shm_bgs, char player_paths[][PATH_MAX]);
-int interpretMovement(unsigned char mov, boardGameState *shm_bgs, int player);
-void initializeAllPlayers(boardGameState *shm_bgs, int playerCount, pid_t *playerPids, char player_bin_paths[][PATH_MAX]);
-bool move_player(syncState *shm_ss, boardGameState *shm_bgs, int id, char move);
-void exit_all_players(syncState *shm_ss, int player_count);
-void terminate_all_players(int player_count);
+void initializeAllPlayers(int player_count, int board_width, int board_height, char player_paths[][4096], char **environ, int player_paths_fds[MAX_PLAYERS]);
+void spawnAllPlayers(boardGameState *shm_bgs, char player_paths[][PATH_MAX]);
+bool movePlayer(syncState *shm_ss, boardGameState *shm_bgs, int id, char move);
+void exitAllPlayers(syncState *shm_ss, int player_count);
+void terminateAllPlayers(int player_count);
 
-void setup_sig_handler();
+void setupSigHandler();
+void whoWon(boardGameState *shm_bgs);
 
 sig_atomic_t termination_requested = 0;
 
-// TODO: TEMPORAL!!
-boardGameState *glob_shm_bgs;
-syncState *glob_shm_ss;
-
-void signal_handler(int signum)
+void signalHandler(int signum)
 {
-    /* TODO: NO BORRAR
-    if(signum == SIGTERM || signum == SIGINT)
+    if (signum == SIGTERM || signum == SIGINT)
         termination_requested = 1;
-    */
-    // TODO: TEMPORAL!!
-    view_exit();
-    exit_all_players(glob_shm_ss, glob_shm_bgs->playerAmount);
-    closeShmBoardGameState(glob_shm_bgs);
-    closeShmSyncState(glob_shm_ss);
-
-    exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[])
@@ -166,7 +136,6 @@ int main(int argc, char *argv[])
             sprintf(view_path, "%s", optarg);
             break;
         case 'p':
-            // Aquí recogemos manualmente los binarios de jugadores
             while (optind < argc && argv[optind][0] != '-')
             {
                 if (player_count >= MAX_PLAYERS)
@@ -205,113 +174,45 @@ int main(int argc, char *argv[])
     }
 
     // --- Signal handler setup --- //
-    setup_sig_handler();
+    setupSigHandler();
 
     // --- Shared memory init --- //
     boardGameState *shm_bgs = createShmBoardGameState(width, height, player_count, seed);
     syncState *shm_ss = createShmSyncState();
 
-    // TODO: TEMPORAL!!!
-    glob_shm_bgs = shm_bgs;
-    glob_shm_ss = shm_ss;
-
     // --- View process init --- //
     bool view_specified = strcmp(view_path, "") != 0;
     if (view_specified)
     {
-        initialize_view(width, height, view_path, environ);
+        initializeView(width, height, view_path, environ);
     }
 
     // --- Player processes init --- //
 
-    // initialize_all_players(player_count, width, height, player_bin_paths, environ);
-
-    int pipefd[player_count][2];
-    pid_t playerPids[player_count];
-    int playerFds[player_count];
-
-    for (int i = 0; i < player_count; i++)
-    {
-
-        // - Master-player pipes creation - //
-        if (pipe(pipefd[i]) == -1)
-            errExit("Unexpected error: failed to create pipe for master-player communication");
-
-        // - Player processeses creation - //
-        pid_t pid = fork();
-        if (pid == -1)
-            errExit("Unexpected error: failed to create player process");
-
-        // - Master-player pipes setup - //
-        if (pid == 0)
-        {
-            // - Player (child) - //
-
-            // Close read end
-            close(pipefd[i][0]);
-
-            // Close STDOUT
-            close(1);
-
-            // Dupe write end to smallest fd (1), now STDOUT is the pipe's write end
-            if (dup(pipefd[i][1]) == -1)
-                errExit("Unexpected error: failed to set pipe write end to STDOUT");
-
-            // Close old write end
-            close(pipefd[i][1]);
-
-            // - Player processes execution - //
-            char widthStr[MAX_ITOA_LENGTH], heightStr[MAX_ITOA_LENGTH];
-            snprintf(widthStr, sizeof(widthStr), "%d", width);
-            snprintf(heightStr, sizeof(heightStr), "%d", height);
-
-            char *playerArgs[] = {player_bin_paths[i], widthStr, heightStr, NULL};
-
-            if (execve(player_bin_paths[i], playerArgs, environ) == -1)
-                errExit("Unexpected error: failed to execute player binary");
-        }
-        else
-        {
-            // - Master (parent) - //
-
-            // Close write end
-            close(pipefd[i][1]);
-
-            // Save pipes' read ends and players' pids for later use
-            playerFds[i] = pipefd[i][0];
-            playerPids[i] = pid;
-        }
-    }
-
-    // safeStorePipefd(pipefd);
-    // safeStorePlayerPids(playerPids, player_count);
+    int player_paths_fds[player_count];
+    initializeAllPlayers(player_count, width, height, player_bin_paths, environ, player_paths_fds);
 
     // --- Spawn players --- //
-    initializeAllPlayers(shm_bgs, player_count, playerPids, player_bin_paths); // TODO: revisar
-    // spawn_all_players(shm_bgs, player_bin_paths);
+    spawnAllPlayers(shm_bgs, player_bin_paths);
 
     // --- Game Start --- //
-
     // - Starting screen - //
+    printStartScreen(shm_ss, shm_bgs, delay, timeout, seed);
     if (view_specified)
     {
-        print_start_screen(shm_ss, shm_bgs, delay, timeout, seed);
-        view_print(shm_ss);
+        viewPrint(shm_ss);
     }
 
     // --- Round Robin scheduling among players --- //
-    // Para round robin TODO: no deberia ser SCHED_RR? REVISAR!
-    int turn = 0;
-    int currentPlayerIndex = 0;
+
+    int currentPlayerIndex = rand() % player_count;
     time_t lastValidMov = time(NULL);
     int blockedPlayers = 0;
     fd_set readfds;
 
     while (!shm_bgs->isGameOver && !termination_requested)
     {
-        turn++;
-
-        // Veamos si hay timeout
+        // timeout?
         time_t currentTime = time(NULL);
         if (difftime(currentTime, lastValidMov) >= timeout)
         {
@@ -321,61 +222,54 @@ int main(int argc, char *argv[])
         }
         else if (blockedPlayers >= player_count)
         {
-            // Chequeo si todos los jugadores estan bloqueados
+            // All players blocked
             printf("Todos los jugadores se encuentran bloqueados\n");
             shm_bgs->isGameOver = 1;
             break;
         }
 
-        // Nos encargamos de el player que le corresponde el turno
         if (sem_post(&shm_ss->player_can_move_sem[currentPlayerIndex]) == -1)
-            errExit("Unexpected error: failed to post to player can move semaphore"); // TODO: nombre semaforos
+            errExit("Unexpected error: failed to post to player can move semaphore");
 
-        // Esperar al jugador a que de su respuesta (al que le corresponde el turno)
+        // Waiting player
 
-        // Se limpia el readfds y se asigna al set el que se debe escuchar
         FD_ZERO(&readfds);
-        FD_SET(playerFds[currentPlayerIndex], &readfds);
+        FD_SET(player_paths_fds[currentPlayerIndex], &readfds);
 
         struct timeval tv;
         tv.tv_sec = timeout;
         tv.tv_usec = 0;
 
-        int readyAmountOfFD = select(playerFds[currentPlayerIndex] + 1, &readfds, NULL, NULL, &tv);
+        int readyAmountOfFD = select(player_paths_fds[currentPlayerIndex] + 1, &readfds, NULL, NULL, &tv);
 
         if (readyAmountOfFD > 0)
         {
             unsigned char mov;
-            ssize_t r = read(playerFds[currentPlayerIndex], &mov, 1);
+            ssize_t r = read(player_paths_fds[currentPlayerIndex], &mov, 1);
 
             if (r <= 0)
             {
-                // El jugador se bloqueo (pipe cerrado o error)
                 shm_bgs->players[currentPlayerIndex].isBlocked = 1;
                 blockedPlayers++;
             }
-            else if (move_player(shm_ss, shm_bgs, currentPlayerIndex, mov))
+            else if (movePlayer(shm_ss, shm_bgs, currentPlayerIndex, mov))
             {
                 lastValidMov = time(NULL);
             }
         }
         else if (readyAmountOfFD == 0)
         {
-            // No se recibio ningun movimiento dentro del timeout de select
-            // El master continua con el siguiente jugador
+            // Go next player
         }
         else
         {
             errExit("Unexpected error: failed to select a player's file descriptor");
         }
 
-        // --- Print and delay --- //
-
         // - Print, notify view process and wait - //
-        // DIBUJARMOS
         if (view_specified)
         {
-            view_print(shm_ss);
+            viewPrint(shm_ss);
         }
 
         // - Delay - //
@@ -389,39 +283,32 @@ int main(int argc, char *argv[])
             currentPlayerIndex = (currentPlayerIndex + 1) % player_count;
             if (currentPlayerIndex == aux)
             {
-                // Todos los jugadores estan bloqueados
+                // All players are blocked
                 break;
             }
         }
     }
 
-    // --- Game over --- //
-
-    // - Print final state - //
-    /* TODO: NO BORRAR
     if (view_specified)
     {
-        if(termination_requested) {
-            view_terminate(shm_ss);
-        } else {
-            view_print(shm_ss);
-            view_exit();
+        if (termination_requested)
+        {
+            viewTerminate();
+        }
+        else
+        {
+            viewPrint(shm_ss);
+            viewExit();
         }
     }
 
-    if(termination_requested)
-        terminate_all_players(player_count);
+    if (termination_requested)
+        terminateAllPlayers(player_count);
     else
-        exit_all_players(shm_ss, player_count);
-    */
-
-    // TODO: TEMPORAL!!
-    if (view_specified)
     {
-        view_print(shm_ss);
-        view_exit();
+        whoWon(shm_bgs);
+        exitAllPlayers(shm_ss, player_count);
     }
-    exit_all_players(shm_ss, player_count);
 
     // - Shared memory close - //
     closeShmBoardGameState(shm_bgs);
@@ -430,15 +317,126 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-void setup_sig_handler()
+void setupSigHandler()
 {
     // --- Signal handler setup --- //
     struct sigaction sa;
-    sa.sa_handler = signal_handler;
+    sa.sa_handler = signalHandler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
-
-    // memset(&sa, 0, sizeof(sa));
     if (sigaction(SIGTERM, &sa, NULL) == -1 || sigaction(SIGINT, &sa, NULL) == -1)
         errExit("Unexpected error: failed to setup signal handler");
+}
+
+void whoWon(boardGameState *shm_bgs)
+{
+
+    int bestScore = 0;
+    int numPlayers = shm_bgs->playerAmount;
+
+    // Best score
+    for (int i = 0; i < numPlayers; i++)
+    {
+        if (shm_bgs->players[i].score > bestScore)
+        {
+            bestScore = shm_bgs->players[i].score;
+        }
+    }
+
+    int topScorers[numPlayers];
+    int topCount = 0;
+    for (int i = 0; i < numPlayers; i++)
+    {
+        if (shm_bgs->players[i].score == bestScore)
+        {
+            topScorers[topCount++] = i;
+        }
+    }
+
+    // If its a draw, search for lowest valid movements
+    if (topCount > 1)
+    {
+        int least_valid_moves = shm_bgs->players[topScorers[0]].validMovementRequests;
+        for (int i = 1; i < topCount; i++)
+        {
+            int id = topScorers[i];
+            if (shm_bgs->players[id].validMovementRequests < least_valid_moves)
+            {
+                least_valid_moves = shm_bgs->players[id].validMovementRequests;
+            }
+        }
+        int first_criteria_winners[topCount];
+        int first_criteria_winner_count = 0;
+        for (int i = 0; i < topCount; i++)
+        {
+            int id = topScorers[i];
+            if (shm_bgs->players[id].validMovementRequests == least_valid_moves)
+                first_criteria_winners[first_criteria_winner_count++] = id;
+        }
+
+        if (first_criteria_winner_count > 1)
+        {
+            int bestInvalids = shm_bgs->players[first_criteria_winners[0]].invalidMovementRequests;
+            for (int j = 1; j < first_criteria_winner_count; j++)
+            {
+                int idx = first_criteria_winners[j];
+                if (shm_bgs->players[idx].invalidMovementRequests < bestInvalids)
+                {
+                    bestInvalids = shm_bgs->players[idx].invalidMovementRequests;
+                }
+            }
+
+            int second_criteria_winners[first_criteria_winner_count];
+            int second_criteria_winner_count = 0;
+            for (int j = 0; j < first_criteria_winner_count; j++)
+            {
+                int idx = first_criteria_winners[j];
+                if (shm_bgs->players[idx].invalidMovementRequests == bestInvalids)
+                {
+                    second_criteria_winners[second_criteria_winner_count++] = idx;
+                }
+            }
+            if (second_criteria_winner_count == 1)
+            {
+                int idx = second_criteria_winners[0];
+                printf("Tenemos un empate por puntos %d y en movimientos válidos %d.\nDecidiremos el ganador por quien tiene menos movimientos inválidos:\n", bestScore, least_valid_moves);
+                printf("🏆 El \033[4;32mganador\033[0m es el Jugador %d con solo %d movimientos inválidos.\n",
+                       idx + 1, bestInvalids);
+            }
+            else
+            {
+                printf("🤝 Empate entre %d jugadores: ", second_criteria_winner_count);
+                for (int j = 0; j < second_criteria_winner_count; j++)
+                {
+                    printf("Jugador %d", second_criteria_winners[j] + 1);
+                    if (j < second_criteria_winner_count - 1)
+                    {
+                        printf(", ");
+                    }
+                }
+                printf(". Todos con %d puntos, %d movimientos válidos y %d movimientos inválidos.\n", bestScore, least_valid_moves, bestInvalids);
+            }
+        }
+        else
+        {
+            int idx = first_criteria_winners[0];
+            printf("Tenemos un empate por puntos %d.\nDecidiremos el ganador por quien tiene menos movimientos válidos:\n", bestScore);
+            printf("🏆 El \033[4;32mganador\033[0m es el Jugador %d con solo %d movimientos inválidos.\n",
+                   idx + 1, least_valid_moves);
+        }
+    }
+    else
+    {
+        int idx = topScorers[0];
+        printf("🏆 El \033[4;32mganador\033[0m es el Jugador %d con %d puntos!\n",
+               idx + 1, bestScore);
+    }
+    printf("\n");
+    printf("PLAYER  POINTS  INVALID-MOVES  VALID-MOVEMENTS BLOCKED X   Y\n");
+    for (int i = 0; i < shm_bgs->playerAmount; i++)
+    {
+        printf("%-8s %-12u %-15u %-11u %-4hhu %-3hu %-3hu\n", shm_bgs->players[i].playerName, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests,
+               shm_bgs->players[i].validMovementRequests, shm_bgs->players[i].isBlocked, shm_bgs->players[i].x, shm_bgs->players[i].y);
+    }
+    printf("\n");
 }

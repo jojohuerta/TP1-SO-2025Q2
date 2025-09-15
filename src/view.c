@@ -24,26 +24,16 @@ typedef enum
     PLY9_BLACK = 30
 } PlayerColor;
 
-boardGameState *open_shm_bgs(int board_game_state_size);
-syncState *open_shm_ss();
-void setup_sig_handler();
+boardGameState *openShmBgs(int board_game_state_size);
+syncState *openShmSs();
 
 void draw(boardGameState *shm_bgs);
-void print_state(syncState *shm_ss, boardGameState *shm_bgs);
-void print_game_over_screen(syncState *shm_ss, boardGameState *shm_bgs);
-void whoWon(boardGameState *shm_bgs);
+void printState(syncState *shm_ss, boardGameState *shm_bgs);
+void printGameOverScreen(syncState *shm_ss, boardGameState *shm_bgs);
 
 void unmapShm(boardGameState *shm_bgs, syncState *shm_ss, int board_game_state_size);
 
 sig_atomic_t termination_requested = 0;
-
-void signal_handler(int signum)
-{
-    if (signum == SIGTERM || signum == SIGINT)
-        termination_requested = 1;
-
-    exit(EXIT_SUCCESS);
-}
 
 int main(int argc, char *argv[])
 {
@@ -57,28 +47,25 @@ int main(int argc, char *argv[])
     int board_game_state_size = sizeof(boardGameState) + sizeof(int) * (width * height);
 
     // --- shm connection  --- //
-    boardGameState *shm_bgs = open_shm_bgs(board_game_state_size);
-    syncState *shm_ss = open_shm_ss();
-
-    // --- Signal handler setup --- //
-    setup_sig_handler();
+    boardGameState *shm_bgs = openShmBgs(board_game_state_size);
+    syncState *shm_ss = openShmSs();
 
     // --- Print state during game --- //
     while (!shm_bgs->isGameOver && !termination_requested)
     {
-        print_state(shm_ss, shm_bgs);
+        printState(shm_ss, shm_bgs);
     }
 
     // --- Print game over state --- //
     if (!termination_requested)
-        print_game_over_screen(shm_ss, shm_bgs);
+        printGameOverScreen(shm_ss, shm_bgs);
 
     unmapShm(shm_bgs, shm_ss, board_game_state_size);
 
     return 0;
 }
 
-boardGameState *open_shm_bgs(int board_game_state_size)
+boardGameState *openShmBgs(int board_game_state_size)
 {
     int fd_bgs = shm_open(GAME_STATE_PATH, O_RDONLY, 0);
     if (fd_bgs == -1)
@@ -92,7 +79,7 @@ boardGameState *open_shm_bgs(int board_game_state_size)
     return shm_bgs;
 }
 
-syncState *open_shm_ss()
+syncState *openShmSs()
 {
     int fd_ss = shm_open(SYNC_STATE_PATH, O_RDWR, 0);
     if (fd_ss == -1)
@@ -106,24 +93,13 @@ syncState *open_shm_ss()
     return shm_ss;
 }
 
-void setup_sig_handler()
-{
-    // --- Signal handler setup --- //
-    struct sigaction sa;
-    sa.sa_handler = signal_handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    if (sigaction(SIGTERM, &sa, NULL) == -1 || sigaction(SIGINT, &sa, NULL) == -1)
-        errExit("Unexpected error: failed to setup signal handler");
-}
-
 void draw(boardGameState *shm_bgs)
 {
-    printf("==============================================\n");
-    printf("    P    PTS   INV-MOV   VAL-MOV   BLOCK   X   Y\n");
+    printf("=====================================================================================\n");
+    printf("    P\t\t        PTS   INV-MOV   VAL-MOV    BLOCK   X   Y\n");
     for (int i = 0; i < shm_bgs->playerAmount; i++)
     {
-        printf(" %-7s %-7u %-9u %-9u %-5hhu %-3hu %-3hu\n", shm_bgs->players[i].playerName, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests,
+        printf(" %-7s\t\t %-7u %-9u %-9u %-5hhu %-3hu %-3hu\n", shm_bgs->players[i].playerName, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests,
                shm_bgs->players[i].validMovementRequests, shm_bgs->players[i].isBlocked, shm_bgs->players[i].x, shm_bgs->players[i].y);
     }
 
@@ -141,12 +117,11 @@ void draw(boardGameState *shm_bgs)
 
                 // Verify is there is a player in this position
                 int playerHere = 0;
-                for (int i = 0; i < shm_bgs->playerAmount; i++)
+                for (int i = 0; i < shm_bgs->playerAmount && playerHere == 0; i++)
                 {
                     if (shm_bgs->players[i].x == x && shm_bgs->players[i].y == y)
                     {
                         playerHere = 1;
-                        break;
                     }
                 }
                 if (playerHere)
@@ -169,7 +144,7 @@ void draw(boardGameState *shm_bgs)
     return;
 }
 
-void print_state(syncState *shm_ss, boardGameState *shm_bgs)
+void printState(syncState *shm_ss, boardGameState *shm_bgs)
 {
     // - Wait until there's something to print - //
     if (!termination_requested)
@@ -184,7 +159,7 @@ void print_state(syncState *shm_ss, boardGameState *shm_bgs)
         errExit("Unexpected error: failed to post to print done semaphore");
 }
 
-void print_game_over_screen(syncState *shm_ss, boardGameState *shm_bgs)
+void printGameOverScreen(syncState *shm_ss, boardGameState *shm_bgs)
 {
     printf("\033[3J\033[H"); // Clear screen and move cursor to top-left
     draw(shm_bgs);
@@ -198,99 +173,10 @@ void print_game_over_screen(syncState *shm_ss, boardGameState *shm_bgs)
     printf(" #     # #     # #     # #             #      #    # #    #       #     #\n");
     printf("  #####  #     # #     # #######       ########     #     ####### #      #\n");
     printf("\033[0m");
-    printf("PLAYER  POINTS  INVALID-MOVES  VALID-MOVEMENTS BLOCKED X   Y\n");
-    for (int i = 0; i < shm_bgs->playerAmount; i++)
-    {
-        printf("%-8s %-12u %-15u %-11u %-4hhu %-3hu %-3hu\n", shm_bgs->players[i].playerName, shm_bgs->players[i].score, shm_bgs->players[i].invalidMovementRequests,
-               shm_bgs->players[i].validMovementRequests, shm_bgs->players[i].isBlocked, shm_bgs->players[i].x, shm_bgs->players[i].y);
-    }
-    printf("\n");
-
-    whoWon(shm_bgs);
 
     // Finished, so we notify the master
     if (sem_post(&shm_ss->view_print_done_sem) == -1)
         errExit("Unexpected error: failed to post to print done semaphore");
-}
-
-void whoWon(boardGameState *shm_bgs)
-{
-
-    int bestScore = 0;
-    int numPlayers = shm_bgs->playerAmount;
-
-    // Best score
-    for (int i = 0; i < numPlayers; i++)
-    {
-        if (shm_bgs->players[i].score > bestScore)
-        {
-            bestScore = shm_bgs->players[i].score;
-        }
-    }
-
-    int topScorers[numPlayers];
-    int topCount = 0;
-    for (int i = 0; i < numPlayers; i++)
-    {
-        if (shm_bgs->players[i].score == bestScore)
-        {
-            topScorers[topCount++] = i;
-        }
-    }
-
-    // If its a draw, search for lowest invalid movements 
-    if (topCount > 1)
-    {
-        int bestInvalids = shm_bgs->players[topScorers[0]].invalidMovementRequests;
-        for (int j = 1; j < topCount; j++)
-        {
-            int idx = topScorers[j];
-            if (shm_bgs->players[idx].invalidMovementRequests < bestInvalids)
-            {
-                bestInvalids = shm_bgs->players[idx].invalidMovementRequests;
-            }
-        }
-
-        int winners[numPlayers];
-        int winnerCount = 0;
-        for (int j = 0; j < topCount; j++)
-        {
-            int idx = topScorers[j];
-            if (shm_bgs->players[idx].invalidMovementRequests == bestInvalids)
-            {
-                winners[winnerCount++] = idx;
-            }
-        }
-
-        // Print result
-        if (winnerCount == 1)
-        {
-            int idx = winners[0];
-            printf("Tenemos un empate por puntos %u, así que decidiremos el ganador por quien tiene menos movimientos inválidos\n", shm_bgs->players[idx].score);
-            printf("🏆 El \033[4;32mganador\033[0m es el Jugador %d con solo %u movimientos inválidos.\n",
-                   idx + 1, shm_bgs->players[idx].invalidMovementRequests);
-        }
-        else
-        {
-            printf("🤝 Empate entre %d jugadores: ", winnerCount);
-            for (int j = 0; j < winnerCount; j++)
-            {
-                printf("Jugador %d", winners[j] + 1);
-                if (j < winnerCount - 1)
-                {
-                    printf(", ");
-                }
-            }
-            printf(". Todos con %d puntos y %d movimientos inválidos.\n", bestScore, bestInvalids);
-        }
-    }
-    else
-    {
-        int idx = topScorers[0];
-        printf("🏆 El \033[4;32mganador\033[0m es el Jugador %d con %u puntos y %u movimientos inválidos.\n",
-               idx + 1, shm_bgs->players[idx].score, shm_bgs->players[idx].invalidMovementRequests);
-    }
-    printf("\n");
 }
 
 void unmapShm(boardGameState *shm_bgs, syncState *shm_ss, int board_game_state_size)
