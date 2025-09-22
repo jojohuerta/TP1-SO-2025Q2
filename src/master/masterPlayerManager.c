@@ -38,7 +38,7 @@ int initializePlayer(int id, int board_width, int board_height, char player_path
         // - Player (child) - //
 
         // Close read end
-        close(player_pipes[id][0]);
+        //close(player_pipes[id][0]);
 
         // Close STDOUT
         close(1);
@@ -48,7 +48,12 @@ int initializePlayer(int id, int board_width, int board_height, char player_path
             errExit("Unexpected error: failed to set pipe write end to STDOUT");
 
         // Close old write end
-        close(player_pipes[id][1]);
+        //close(player_pipes[id][1]);
+
+        for(int i = id; i >= 0; i--) {
+            close(player_pipes[i][0]);
+            close(player_pipes[i][1]);
+        }
 
         // - Player processes execution - //
         char widthStr[MAX_ITOA_LENGTH], heightStr[MAX_ITOA_LENGTH];
