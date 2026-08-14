@@ -19,6 +19,14 @@ Instead of blindly chasing immediate points, the AI utilizes a dual-heuristic ap
 *   **Weighted Decision Making:** The next move is calculated by maximizing `cellValue + SPACE_SCORE_MULTIPLIER * accessibleCells`, ensuring the AI never traps itself.
 
 ---
+## Team & Roles
+This project was developed collaboratively, with responsibilities divided as follows:
+
+*   **Joaquín Huerta:** Core Architecture & AI Development. Designed and implemented the `Master` process, the Round-Robin scheduler, IPC synchronization, and 100% of the winning Autonomous AI (`Player`).
+*   **Thomas Ruijgt:** Visuals & Rendering. In charge of the decoupled `View` process and real-time terminal graphics generation.
+*   **Ignacio Frund:** QA & Optimization. Handled code refactoring, structural debugging, and static analysis using PVS-Studio.
+
+---
 
 ## Requirements
 
