@@ -6,6 +6,17 @@ Multi-process snake-like game engine and autonomous Artificial Intelligence buil
 
 In this game, players are placed on a rectangular grid containing rewards, and as they move across the board, they collect points from the cells they visit.
 
+---
+
+## Team & Roles
+This project was developed collaboratively, with responsibilities divided as follows:
+
+*   **Joaquín Huerta:** Core Architecture & AI Development. Designed and implemented the `Master` process, the Round-Robin scheduler, IPC synchronization, and 100% of the winning Autonomous AI (`Player`).
+*   **Thomas Ruijgt:** Visuals & Rendering. In charge of the decoupled `View` process and real-time terminal graphics generation.
+*   **Ignacio Frund:** QA & Optimization. Handled code refactoring, structural debugging, and static analysis using PVS-Studio.
+
+---
+
 ## Core System Architecture
 The engine relies on advanced Inter-Process Communication (IPC) mechanisms, utilizing shared memory and pipes to synchronize three distinct process types:
 
@@ -17,14 +28,6 @@ The engine relies on advanced Inter-Process Communication (IPC) mechanisms, util
 Instead of blindly chasing immediate points, the AI utilizes a dual-heuristic approach to survive and dominate:
 *   **Breadth-First Search (BFS):** Implements an algorithm to analyze the local board state and calculate escape routes.
 *   **Weighted Decision Making:** The next move is calculated by maximizing `cellValue + SPACE_SCORE_MULTIPLIER * accessibleCells`, ensuring the AI never traps itself.
-
----
-## Team & Roles
-This project was developed collaboratively, with responsibilities divided as follows:
-
-*   **Joaquín Huerta:** Core Architecture & AI Development. Designed and implemented the `Master` process, the Round-Robin scheduler, IPC synchronization, and 100% of the winning Autonomous AI (`Player`).
-*   **Thomas Ruijgt:** Visuals & Rendering. In charge of the decoupled `View` process and real-time terminal graphics generation.
-*   **Ignacio Frund:** QA & Optimization. Handled code refactoring, structural debugging, and static analysis using PVS-Studio.
 
 ---
 
