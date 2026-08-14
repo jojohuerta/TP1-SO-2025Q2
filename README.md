@@ -1,31 +1,42 @@
-# TP1-SO-2025Q2
-Trabajo Práctico de Sistemas Operativos. 
+# ChompChamps: IPC Game Engine & Champion AI
+This project was developed during the second semester of 2025
 
-# ChompChamps
+## Overview
+Multi-process snake-like game engine and autonomous Artificial Intelligence built entirely in C. The custom AI algorithm achieved **1st Place** in the global university tournament out of approximately 30 independent algorithms.
 
-ChompChamps es un juego multijugador del género snake. El tablero de juego es una grilla rectangular donde cada celda contiene recompensas. Al inicio, los jugadores son ubicados en diferentes posiciones y a medida que se desplazan, obtienen las recompensas de las celdas que visitan.
+In this game, players are placed on a rectangular grid containing rewards, and as they move across the board, they collect points from the cells they visit.
+
+## Core System Architecture
+The engine relies on advanced Inter-Process Communication (IPC) mechanisms, utilizing shared memory and pipes to synchronize three distinct process types:
+
+*   **Master Process (`ChompChamps`):** The core engine. It manages a Round-Robin scheduler using `select()` multiplexing to enforce strict timeouts for each player. It oversees shared memory allocation and implements signal handlers for graceful resource teardown.
+*   **Player Process / AI (`player`):** Autonomous entities that interact with the shared game state by solving the classic Reader-Writer synchronization problem using semaphores. 
+*   **View Process (`view`):** Decoupled rendering engine that waits for synchronization signals to print the real-time matrix state.
+
+## Explanation of the Winning AI Algorithm
+Instead of blindly chasing immediate points, the AI utilizes a dual-heuristic approach to survive and dominate:
+*   **Breadth-First Search (BFS):** Implements an algorithm to analyze the local board state and calculate escape routes.
+*   **Weighted Decision Making:** The next move is calculated by maximizing `cellValue + SPACE_SCORE_MULTIPLIER * accessibleCells`, ensuring the AI never traps itself.
 
 ---
 
-## Requisitos
+## Requirements
 
-- **Docker instalado.**
-- **Imagen Docker** provista por la cátedra:  
+- **Docker installed.**
+- **Docker Image** provided by the university:  
   `agodio/itba-so-multi-platform:3.0`
-- Clon de este repositorio.
-- PVS con una licencia (Opcional).
-  
----
+- Clone of this repository.
+- PVS-Studio with a valid license (Optional).
 
-## Inicialización del Entorno
+## Environment Initilization
 
-Para comenzar a trabajar dentro del entorno de desarrollo controlado por la cátedra, ejecutar:
+To start the controlled development environment, run the following Docker command:
 
 ```bash
 docker run --rm -v ${PWD}:/root --security-opt seccomp:unconfined -it agodio/itba-so-multi-platform:3.0
 ```
 
-Luego, moverse al directorio `root`. Puede hacerse con:
+Then, navigate to the working root directory:
 
 ```bash
 cd root
@@ -33,87 +44,56 @@ cd root
 
 ---
 
-## Compilación
+## Compilation & Makefile Features
 
-El proyecto cuenta con un `Makefile` que facilita la compilación de los distintos binarios del sistema:
+The project includes a `Makefile` to easily compile the system binaries.
 
+**Compile all binaries:**
 ```bash
 make all
 ```
 
-Este comando genera tres ejecutables:
-- `ChompChamps` → Binario principal del juego.
-- `player` → Ejecutable que representa a un jugador.
-- `view` → Binario opcional para mostrar visualmente el juego.
+This command generates:
+- `ChompChamps`
+- `player`
+- `view` 
 
-Para más información acerca de los comandos disponibles con el `Makefile`, ver sección `Funcionalidades del Makefile`.
+They can also be compiled individually, by doing `make ChompChamps`, `make view` or `make player`.
 
+**Clean generated binaries:**
+  ```bash
+  make clean
+  ```
+**Clean temporary files, analyze with PVS-Studio and generate a report**
+  ```bash
+  make pvs
+  ```
+To execute this command is requiered to have PVS-STUDIO installed and have a valid license. The HTML report shall appear in `informe_completo.html`.
+ 
 ---
 
-## Ejecución
+## Execution
 
-El binario principal `ChompChamps` acepta múltiples parámetros para configurar la partida:
+The main binary `ChompChamps` accepts multiple parameters to configure the match:
 
 ```bash
 ./ChompChamps -p player [player2 ... playerN] [-v view] [-w WIDTH] [-h HEIGHT] [-d DELAY] [-t TIMEOUT] [-s SEED]
 ```
 
-### Parámetros
+### Parameters Configuration
 
-●​[-p]: Ruta/s de los binarios de los jugadores. Mínimo: 1, Máximo: 9
+●​[-p]: Path(s) to the player binaries. Minimum: 1, Maximum: 9.
 
-●​[-w]: Ancho del tablero. Default y mínimo: 10
+●​[-w]: Board width. Default and minimum: 10.
 
-●​[-h]: Alto del tablero. Default y mínimo: 10
+●​[-h]: Board height. Default and minimum: 10.
 
-●​[-d]: milisegundos que espera el máster cada vez que se imprime el estado. Default: 200
+●​[-d]: Delay (in milliseconds) the master waits after each state print. Default: 200.
 
-●​[-t]: Timeout en segundos para recibir solicitudes de movimientos válidos. Default: 10
+●​[-t]: Timeout (in seconds) to receive valid move requests. Default: 10.
 
-●​[-s]: Semilla utilizada para la generación del tablero. Default: time(NULL)
+●​[-s]: Seed used for board generation. Default: time(NULL).
 
-●​[-v]: Ruta del binario de la vista. Default: Sin vista.
+●​[-v]: Path to the view binary. Default: No view.
 
-### Todos los parametros son opcionales excepto el parámetro -p. 
-
----
-
-## Funcionalidades del Makefile
-
-El `Makefile` permite realizar múltiples tareas relacionadas con el desarrollo y análisis del proyecto:
-
-### Comandos disponibles
-
-- **Compilar todos los binarios:**
-  ```bash
-  make all
-  ```
-
-- **Compilar individualmente:**
-  - Juego:
-    ```bash
-    make ChompChamps
-    ```
-  - Vista:
-    ```bash
-    make view
-    ```
-  - Jugador:
-    ```bash
-    make player
-    ```
-
-- **Limpiar binarios generados:**
-  ```bash
-  make clean
-  ```
-
-- **Limpiar archivos temporales, analizar con PVS-Studio y generar un reporte**
-  ```bash
-  make pvs
-  ```
-
-  Para ejecutar este comando es necesario tener instalado PVS-Studio y tener una licencia.
-  
-  El reporte HTML se encuentra en `informe_completo.html`.
----
+### All parameters are optional except -p.
